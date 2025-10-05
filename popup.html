@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HelpMyMom Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      min-height: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .header {
+      padding: 20px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+      line-height: 1.4;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+
+    .section-title .icon {
+      margin-right: 8px;
+      font-size: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      opacity: 0.9;
+    }
+
+    .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    .form-select option {
+      background: #2d3748;
+      color: white;
+    }
+
+    .form-select:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.5);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+    }
+
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+    }
+
+    .toggle-label {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .toggle.active {
+      background: #4ade80;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+
+    .toggle.active .toggle-slider {
+      transform: translateX(20px);
+    }
+
+    .stats {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 16px;
+      backdrop-filter: blur(10px);
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .stat-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .stat-value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .footer {
+      padding: 20px;
+      text-align: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .footer p {
+      font-size: 12px;
+      opacity: 0.8;
+      line-height: 1.4;
+    }
+
+    .help-text {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    .button {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(10px);
+    }
+
+    .button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 HelpMyMom</h1>
+    <p>AI-powered assistant for non-native English speakers</p>
+  </div>
+
+  <div class="content">
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">🌐</span>
+        Language Settings
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" for="targetLanguage">Target Language</label>
+        <select class="form-select" id="targetLanguage">
+          <option value="en">English (Default)</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+          <option value="ru">Russian</option>
+          <option value="zh">Chinese</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="ar">Arabic</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <div class="help-text">Choose your preferred language for explanations</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">⚡</span>
+        AI Settings
+      </div>
+      
+      <div class="form-group">
+        <div class="toggle-group">
+          <span class="toggle-label">Use Local AI (Faster)</span>
+          <div class="toggle active" id="localAI">
+            <div class="toggle-slider"></div>
+          </div>
+        </div>
+        <div class="help-text">Local AI is faster and more private, but remote AI is more capable</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">📊</span>
+        Usage Statistics
+      </div>
+      
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-label">Texts Explained</span>
+          <span class="stat-value" id="textsExplained">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">This Session</span>
+          <span class="stat-value" id="sessionCount">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Last Used</span>
+          <span class="stat-value" id="lastUsed">Never</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">💡</span>
+        Explain Selected Text
+      </div>
+      <button class="button" id="explainSelected">Explain selection</button>
+      <div class="help-text" id="aiStatus">Waiting for user action…</div>
+    </div>
+
+    <div class="section">
+      <button class="button" id="clearStats">Clear Statistics</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Select text on any website and right-click to get explanations in simple English!</p>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

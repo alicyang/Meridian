@@ -1,0 +1,37 @@
+{
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApayPBhrRJGR/Xx6t4Y0MY18hh+4+EJFLPvvneunezDFfOLxrgtTzcggzYG2vcu88mvXzUZud5hY+PwamoX45Aqwa65UBUmjZ2/N9z4Jf3VL9FPXAIE32o5Ewl7TN8bGwOK5FIl3lyXJRWy4ha7cWCW/lFLbjkwDaprzkJLaxZxg74I82LgmzFsSTopKSTIt5VAFf/JNnvJYOuXOEgDEf4Abn5hIwyH5nWnIC5JU68ODr6lgXdyciWpRI27hYQ9v8M8aHwFFsNFmd30NuqpiD9wUM92yrqeywqXRFH0lN/MG8Tm0gWWm/eeC2JHpPKPlD6crl47aGwypfHXb/+HX2KwIDAQAB",
+  "manifest_version": 3,
+  "name": "HelpMyMom",
+  "version": "1.0.0",
+  "description": "AI-powered assistant for non-native English speakers to understand complex websites",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "HelpMyMom Settings"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  },
+  "trial_tokens": [
+    "AtsRmpkhS9hs6yLdajN7uol1BPIOCHDkFWoFlP3uZ1QyQOBiRecWIy3CuRv6Uay/gVq6Tg5AC83cf6F7ZaiI6gAAAAB4eyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vYXBqY3Bvb2ppZWxpZGRnbmlqZXBkbGdscGNoY2dsY28iLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElGb3JFeHRlbnNpb24iLCJleHBpcnkiOjE3NjA0ODYzOTl9"
+  ]
+}
