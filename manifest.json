@@ -18,6 +18,9 @@
     "side_panel": {
         "default_path": "src/panel/panel.html"
     },
+    "host_permissions": [
+        "<all_urls>"
+    ],
     "trial_tokens": [
         "A0D/+45GcH/4Rs6noemLK9ZFY3W9KNL87IWB90H45HJGvkNplrlSWOo6nyyqMurK3PmQ91Sy653C0l9NkyQveggAAACMeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vY2VqY2RlbWFlaWxna29wYXBkY2RrcGpnZmFpZ2lma2kiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElGb3JFeHRlbnNpb24iLCJleHBpcnkiOjE3NjA0ODYzOTksImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
     ]
