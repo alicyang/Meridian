@@ -1,18 +1,21 @@
 {
-  "name": "Chrome For Everyone",
-  "description": "Confidently navigate the web in any language.",
-  "version": "1.0",
-  "manifest_version": 3,
-  "permissions": [
-    "tabs", 
-    "activeTab", 
-    "scripting"
-  ], 
-  "background": {
-    "service_worker": "src/background.js"
-  },
-  "action": {
-    "default_popup": "src/popup/popup.html", 
-    "default_title": "Smart Search"
-  }
+    "name": "Chrome For Everyone",
+    "description": "Confidently navigate the web in any language.",
+    "version": "1.0",
+    "manifest_version": 3,
+    "permissions": [
+        "tabs",
+        "activeTab",
+        "scripting"
+    ],
+    "background": {
+        "service_worker": "src/background.js"
+    },
+    "action": {
+        "default_popup": "src/popup/popup.html",
+        "default_title": "Smart Search"
+    },
+    "trial_tokens": [
+        "A0D/+45GcH/4Rs6noemLK9ZFY3W9KNL87IWB90H45HJGvkNplrlSWOo6nyyqMurK3PmQ91Sy653C0l9NkyQveggAAACMeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vY2VqY2RlbWFlaWxna29wYXBkY2RrcGpnZmFpZ2lma2kiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElGb3JFeHRlbnNpb24iLCJleHBpcnkiOjE3NjA0ODYzOTksImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
+    ]
 }
