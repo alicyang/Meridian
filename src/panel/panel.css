@@ -1,0 +1,15 @@
+#extension-panel {
+    width: 300px;
+    padding: 12px;
+    font-family: sans-serif;
+}
+
+#user-input, #assistant-box {
+    width: 100%;
+    min-height: 100px;
+    font-size: 16px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}

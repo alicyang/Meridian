@@ -1,4 +1,5 @@
 const submitBtn = document.getElementById("submit-btn");
+const assistantBox = document.getElementById("assistant-box");
 let session; 
 	
 submitBtn.onclick = async function () {
@@ -7,21 +8,11 @@ submitBtn.onclick = async function () {
 		await createSession();
 	}
 	const resp = await session.prompt([
-		{
-			role: "user",
-			content: inputValue,
-		},
-		{
-			role: "assistant",
-			content: "Sure, I can help with that!",
-		},
+		{ role: "user", content: inputValue },
+		{ role: "assistant", content: "Sure, I can help!" },
 	]);
-	console.log(resp);
+	assistantBox.value = resp;
 };
-
-if (navigator.userActivation.isActive) {
-	// Create an instance of a built-in API
-}
 
 async function createSession() {
 	const available = await LanguageModel.availability();
@@ -41,6 +32,7 @@ async function createSession() {
 					"You are a helpful and friendly assistant who understands that the user may not be a native English speaker.",
 			},
 		],
+		expectedInputs: [{ type: "text", languages: ["en"] }],
 		expectedOutputs: [{ type: "text", languages: ["en"] }],
 	});
 }
