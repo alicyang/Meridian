@@ -6,6 +6,7 @@
   "description": "AI-powered assistant for non-native English speakers to understand complex websites",
   "permissions": [
     "activeTab",
+    "contextMenus",
     "storage",
     "scripting"
   ],
@@ -31,7 +32,7 @@
     "48": "icons/icon48.svg",
     "128": "icons/icon128.svg"
   },
-  "trial_tokens": [
-    "AtsRmpkhS9hs6yLdajN7uol1BPIOCHDkFWoFlP3uZ1QyQOBiRecWIy3CuRv6Uay/gVq6Tg5AC83cf6F7ZaiI6gAAAAB4eyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vYXBqY3Bvb2ppZWxpZGRnbmlqZXBkbGdscGNoY2dsY28iLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElGb3JFeHRlbnNpb24iLCJleHBpcnkiOjE3NjA0ODYzOTl9"
+  "origin_trial_tokens": [
+    "A9MnSBAMijg6fw2OqxYOjhIPOi2IrmNIzoNRWqzGPRFPYtGlezUKQ1dtf5Wm/nEceqENv1WHE3Cd1SksdhzMRQ4AAACMeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vYXBqY3Bvb2ppZWxpZGRnbmlqZXBkbGdscGNoY2dsY28iLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElGb3JFeHRlbnNpb24iLCJleHBpcnkiOjE3NjA0ODYzOTksImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
   ]
 }

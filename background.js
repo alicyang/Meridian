@@ -1,12 +1,46 @@
 // Background service worker for HelpMyMom extension
 
-// (Disabled) Context menu setup was used in the early MVP.
-// We now run the Explain flow from the popup. Leaving this stub for future use.
+// Create context menu for inline tooltips
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('HelpMyMom installed. Context menu is currently disabled.');
+  console.log('HelpMyMom extension installed, creating context menu...');
+  chrome.contextMenus.create({
+    id: "explain-text",
+    title: "Explain this text",
+    contexts: ["selection"],
+    documentUrlPatterns: ["<all_urls>"]
+  }, () => {
+    if (chrome.runtime.lastError) {
+      console.error('Error creating context menu:', chrome.runtime.lastError);
+    } else {
+      console.log('Context menu created successfully');
+    }
+  });
 });
 
-// Context menu click handler disabled.
+// Handle context menu clicks for inline tooltips
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  console.log('Context menu clicked:', info);
+  
+  if (info.menuItemId === "explain-text" && info.selectionText) {
+    const selectedText = info.selectionText.trim();
+    console.log('Processing selected text for inline tooltip:', selectedText);
+    
+    if (selectedText.length === 0) {
+      console.log('No text selected, returning');
+      return;
+    }
+
+    try {
+      // Send message to content script to handle inline tooltip
+      chrome.tabs.sendMessage(tab.id, {
+        action: "showInlineExplanation",
+        text: selectedText
+      });
+    } catch (error) {
+      console.error('Error sending message to content script:', error);
+    }
+  }
+});
 
 // Chrome Built-in AI (Gemini Nano) - Local processing
 async function explainWithLocalAI(text) {

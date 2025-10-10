@@ -6,6 +6,29 @@ console.log('HelpMyMom content script loaded!');
 let currentTooltip = null;
 let selectedText = '';
 
+// Third-party Origin Trial token for content script (you'll need to get this separately)
+const THIRD_PARTY_TOKEN = "A9MnSBAMijg6fw2OqxYOjhIPOi2IrmNIzoNRWqzGPRFPYtGlezUKQ1dtf5Wm/nEceqENv1WHE3Cd1SksdhzMRQ4AAACMeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vYXBqY3Bvb2ppZWxpZGRnbmlqZXBkbGdscGNoY2dsY28iLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElGb3JFeHRlbnNpb24iLCJleHBpcnkiOjE3NjA0ODYzOTksImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="; // Set this when you get the third-party token
+
+// Inject Origin Trial token for content script context
+function injectOriginTrialToken(token) {
+  if (!token || !document.head) return;
+  
+  // Check if token already exists
+  const existing = document.head.querySelector('meta[http-equiv="origin-trial"]');
+  if (existing?.content === token) return;
+  
+  // Remove existing token if different
+  if (existing) existing.remove();
+  
+  // Inject new token
+  const meta = document.createElement('meta');
+  meta.httpEquiv = 'origin-trial';
+  meta.content = token;
+  document.head.appendChild(meta);
+  
+  console.log('Origin Trial token injected for content script');
+}
+
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Content script received message:', request);
@@ -24,11 +47,69 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.log('Showing error tooltip for:', request.text);
       showErrorTooltip(request.text, request.error);
       break;
+    case 'showInlineExplanation':
+      console.log('Showing inline explanation for:', request.text);
+      handleInlineExplanation(request.text);
+      break;
     default:
       console.log('Unknown action:', request.action);
   }
 });
 
+// Handle inline explanation with AI
+async function handleInlineExplanation(text) {
+  try {
+    // Show loading state first
+    showInlineLoadingTooltip(text);
+    
+    // Inject Origin Trial token if available
+    if (THIRD_PARTY_TOKEN) {
+      injectOriginTrialToken(THIRD_PARTY_TOKEN);
+    }
+    
+    // Check if LanguageModel is available
+    if (typeof LanguageModel === 'undefined') {
+      throw new Error('LanguageModel API not available in content script. You may need a third-party Origin Trial token.');
+    }
+    
+    // Check availability
+    const availability = await LanguageModel.availability();
+    console.log('LanguageModel availability in content script:', availability);
+    
+    if (availability === 'unavailable') {
+      throw new Error('Chrome Built-in AI is not available on this device.');
+    }
+    
+    if (availability === 'downloadable' || availability === 'downloading') {
+      throw new Error('Chrome Built-in AI needs to be downloaded first. Please use the extension popup to download the model.');
+    }
+    
+    // Create session (no explicit temperature/topK to avoid validation errors)
+    const session = await LanguageModel.create({
+      initialPrompts: [
+        { 
+          role: 'system', 
+          content: 'You are a helpful assistant that explains text in simple, clear English for non-native speakers. Focus on making complex concepts easy to understand.' 
+        }
+      ]
+    });
+    
+    // Get explanation
+    const result = await session.prompt([
+      {
+        role: 'user',
+        content: `Please explain this text in simple English: "${text}"`
+      }
+    ]);
+    
+    // Show inline explanation tooltip
+    showInlineExplanationTooltip(text, result);
+    
+  } catch (error) {
+    console.error('Inline explanation error:', error);
+    showInlineErrorTooltip(text, error.message);
+  }
+}
 
 // Show loading state while AI processes
 function showLoadingTooltip(text) {
@@ -49,6 +130,147 @@ function showLoadingTooltip(text) {
   `);
   
   positionTooltip();
+}
+
+// Show inline loading tooltip (Wikipedia-style)
+function showInlineLoadingTooltip(text) {
+  selectedText = text;
+  removeExistingTooltip();
+  
+  currentTooltip = createInlineTooltip(`
+    <div class="helpmymom-inline-tooltip loading">
+      <div class="inline-tooltip-header">
+        <div class="inline-tooltip-icon">🤖</div>
+        <div class="inline-tooltip-title">HelpMyMom</div>
+        <div class="inline-tooltip-subtitle">AI Assistant</div>
+      </div>
+      <div class="inline-tooltip-content">
+        <div class="loading-spinner"></div>
+        <p>Analyzing your text...</p>
+      </div>
+    </div>
+  `);
+  
+  positionInlineTooltip();
+}
+
+// Show inline explanation tooltip (Wikipedia-style)
+function showInlineExplanationTooltip(originalText, explanation) {
+  removeExistingTooltip();
+  
+  currentTooltip = createInlineTooltip(`
+    <div class="helpmymom-inline-tooltip explanation">
+      <div class="inline-tooltip-header">
+        <div class="inline-tooltip-icon">💡</div>
+        <div class="inline-tooltip-title">Simple Explanation</div>
+        <div class="inline-tooltip-subtitle">HelpMyMom AI</div>
+      </div>
+      <div class="inline-tooltip-content">
+        <div class="original-text-section">
+          <strong>Selected text:</strong>
+          <p>"${originalText}"</p>
+        </div>
+        <div class="explanation-section">
+          <strong>Simple explanation:</strong>
+          <p>${explanation}</p>
+        </div>
+      </div>
+      <div class="inline-tooltip-footer">
+        <button class="inline-close-btn" id="inline-close-btn">×</button>
+      </div>
+    </div>
+  `);
+  
+  setupInlineTooltipEventListeners();
+  positionInlineTooltip();
+}
+
+// Show inline error tooltip (Wikipedia-style)
+function showInlineErrorTooltip(text, errorMessage) {
+  removeExistingTooltip();
+  
+  currentTooltip = createInlineTooltip(`
+    <div class="helpmymom-inline-tooltip error">
+      <div class="inline-tooltip-header">
+        <div class="inline-tooltip-icon">⚠️</div>
+        <div class="inline-tooltip-title">Error</div>
+        <div class="inline-tooltip-subtitle">HelpMyMom AI</div>
+      </div>
+      <div class="inline-tooltip-content">
+        <p>${errorMessage}</p>
+        <div class="help-section">
+          <strong>Try this instead:</strong>
+          <ol>
+            <li>Use the extension popup to download the AI model first</li>
+            <li>Make sure you have Chrome 126+ with AI features enabled</li>
+            <li>Try again after the model is downloaded</li>
+          </ol>
+        </div>
+      </div>
+      <div class="inline-tooltip-footer">
+        <button class="inline-close-btn" id="inline-close-btn">×</button>
+      </div>
+    </div>
+  `);
+  
+  setupInlineTooltipEventListeners();
+  positionInlineTooltip();
+}
+
+// Create inline tooltip element
+function createInlineTooltip(html) {
+  const tooltip = document.createElement('div');
+  tooltip.innerHTML = html;
+  tooltip.className = 'helpmymom-inline-tooltip-container';
+  document.body.appendChild(tooltip);
+  return tooltip;
+}
+
+// Position inline tooltip near selected text
+function positionInlineTooltip() {
+  if (!currentTooltip) return;
+  
+  const selection = window.getSelection();
+  if (selection.rangeCount === 0) return;
+  
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  
+  const tooltip = currentTooltip.querySelector('.helpmymom-inline-tooltip');
+  const tooltipRect = tooltip.getBoundingClientRect();
+  
+  // Position tooltip above selection, centered
+  let top = rect.top - tooltipRect.height - 15;
+  let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+  
+  // Adjust if tooltip goes off screen
+  if (top < 10) {
+    top = rect.bottom + 15; // Show below instead
+  }
+  
+  if (left < 10) {
+    left = 10;
+  } else if (left + tooltipRect.width > window.innerWidth - 10) {
+    left = window.innerWidth - tooltipRect.width - 10;
+  }
+  
+  tooltip.style.position = 'fixed';
+  tooltip.style.top = `${top}px`;
+  tooltip.style.left = `${left}px`;
+  tooltip.style.zIndex = '10000';
+}
+
+// Setup event listeners for inline tooltip buttons
+function setupInlineTooltipEventListeners() {
+  if (!currentTooltip) return;
+  
+  // Close button
+  const closeBtn = currentTooltip.querySelector('#inline-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      removeExistingTooltip();
+    });
+  }
 }
 
 // Show explanation tooltip
@@ -249,7 +471,7 @@ function setupTooltipEventListeners() {
   }
 }
 
-// Clean up tooltips when page changes
+// Clean up tooltips when page changes (click outside to dismiss)
 document.addEventListener('click', (e) => {
   if (currentTooltip && !currentTooltip.contains(e.target)) {
     removeExistingTooltip();
