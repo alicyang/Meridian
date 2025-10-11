@@ -12,8 +12,15 @@
         <textarea id='user-input' placeholder="What would you like to search for?"></textarea>
         <button id="submit-btn" type="submit">Search</button>
         
-        <textarea id="assistant-box" placeholder="Assistant's response will appear here" readonly></textarea>
+        <div id="language-model-box">
+            <div class="loader-container">
+                <div class="loader" id="assistant-loader"></div>
+            </div>
+            <div id="assistant-response-box">
+                <p>Assistant's Response will appear below.</p>
+            </div>
+        </div>
     </div>
-    <script src="panel.js"></script>
+    <script type="module" src="panel.js"></script>
 </body>
 </html>

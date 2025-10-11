@@ -18,6 +18,12 @@
     "side_panel": {
         "default_path": "src/panel/panel.html"
     },
+    "web_accessible_resources": [
+        {
+            "resources": ["smd.js"],
+            "matches": ["<all_urls>"]
+        }
+    ],
     "host_permissions": [
         "<all_urls>"
     ],

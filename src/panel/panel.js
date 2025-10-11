@@ -1,15 +1,43 @@
+import * as smd from '../../smd.js';
+
 const submitBtn = document.getElementById("submit-btn");
-const assistantBox = document.getElementById("assistant-box");
-let session; 
+const assistantResponseBox = document.getElementById("assistant-response-box");
+const assistantLoader = document.getElementById("assistant-loader")
+
+// initialize session 
+const languageModel = await LanguageModel.create({
+	monitor(m) {
+		m.addEventListener("downloadprogress", (e) => {
+			console.log(`Downloaded ${e.loaded * 100}%`);
+		});
+	},
+	initialPrompts: [
+		{
+			role: "system",
+			content:
+				"You are a helpful and friendly assistant who understands that the user may not be a native English speaker." +
+				"You will use context provided to you about the webpage a user is currently on to craft concise and most likely responses.",
+		},
+	],
+	expectedInputs: [{ type: "text", languages: ["en"] }],
+	expectedOutputs: [{ type: "text", languages: ["en"] }],
+});
+const searchSession = await languageModel.clone();
 	
 // submit button click handler
 submitBtn.onclick = async function () {
+	assistantResponseBox.replaceChildren();
+	assistantLoader.style.display = "flex"
+
 	const inputValue = document.getElementById("user-input").value;
-	if (!session) {
-		await createSession();
-	}
 	const data = await combPage();
-	const resp = await session.prompt([
+
+	// set up a Markdown parser so we can format the model's output 
+	const renderer = smd.default_renderer(assistantResponseBox);
+	const parser = smd.parser(renderer);
+
+	// read model response from stream to instantly display output
+	const stream = searchSession.promptStreaming([
 		{ role: "user", content: inputValue },
 		{
 			role: "assistant",
@@ -17,44 +45,27 @@ submitBtn.onclick = async function () {
 		},
 		{ role: "system", content: JSON.stringify(data) },
 	]);
-	assistantBox.value = resp;
-};
 
-// create a new session 
-async function createSession() {
-	const available = await LanguageModel.availability();
-	if (available == "unavailable") {
-		throw new Error("The Prompt API is not compatible with this device.");
+	let firstChunk = true;
+	for await (const chunk of stream) {
+		if (firstChunk) {
+			assistantLoader.style.display = "none";
+			firstChunk = false;
+		}
+		smd.parser_write(parser, chunk);
 	}
-	session = await LanguageModel.create({
-		monitor(m) {
-			m.addEventListener("downloadprogress", (e) => {
-				console.log(`Downloaded ${e.loaded * 100}%`);
-			});
-		},
-		initialPrompts: [
-			{ role: "user", content: "Where is the About section on this page?" },
-			{ role: "assistant", content: "Here is a list of possible headers and links on this page that may lead to the About section." },
-			{
-				role: "system",
-				content:
-					"You are a helpful and friendly assistant who understands that the user may not be a native English speaker." +
-					"You will use context provided to you about the webpage a user is currently on to craft concise and most likely responses.",
-			},
-		],
-		expectedInputs: [{ type: "text", languages: ["en"] }],
-		expectedOutputs: [{ type: "text", languages: ["en"] }],
-	});
-}
+	smd.parser_end(parser);
+};
 
 function combPage() {
 	return new Promise((resolve, reject) => {
+		// retrieve content from the currently active tab 
 		chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
 			if (!tab) {
 				reject("No active tab found");
 				return;
 			}
-
+			
 			chrome.scripting.executeScript({
 				target: { tabId: tab.id },
 				func: () => {
