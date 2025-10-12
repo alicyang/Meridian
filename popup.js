@@ -5,9 +5,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load user settings
   await loadSettings();
   
-  // Load statistics
-  await loadStatistics();
-  
   // Set up event listeners
   setupEventListeners();
 });
@@ -18,9 +15,7 @@ async function loadSettings() {
     const result = await chrome.storage.sync.get([
       'targetLanguage',
       'preferredAI',
-      'textsExplained',
-      'sessionCount',
-      'lastUsed'
+      'textsExplained'
     ]);
     
     // Set target language
@@ -41,43 +36,6 @@ async function loadSettings() {
   }
 }
 
-// Load usage statistics
-async function loadStatistics() {
-  try {
-    const result = await chrome.storage.local.get([
-      'textsExplained',
-      'sessionCount',
-      'lastUsed'
-    ]);
-    
-    // Update statistics display
-    const textsExplained = document.getElementById('textsExplained');
-    const sessionCount = document.getElementById('sessionCount');
-    const lastUsed = document.getElementById('lastUsed');
-    
-    if (textsExplained) {
-      textsExplained.textContent = result.textsExplained || 0;
-    }
-    
-    if (sessionCount) {
-      sessionCount.textContent = result.sessionCount || 0;
-    }
-    
-    if (lastUsed) {
-      const lastUsedDate = result.lastUsed;
-      if (lastUsedDate) {
-        const date = new Date(lastUsedDate);
-        lastUsed.textContent = date.toLocaleDateString();
-      } else {
-        lastUsed.textContent = 'Never';
-      }
-    }
-    
-  } catch (error) {
-    console.error('Error loading statistics:', error);
-  }
-}
-
 // Set up event listeners
 function setupEventListeners() {
   // Target language change
@@ -95,17 +53,6 @@ function setupEventListeners() {
       const isActive = localAIToggle.classList.contains('active');
       localAIToggle.classList.toggle('active', !isActive);
       await saveSetting('preferredAI', isActive ? 'remote' : 'local');
-    });
-  }
-  
-  // Clear statistics button
-  const clearStatsButton = document.getElementById('clearStats');
-  if (clearStatsButton) {
-    clearStatsButton.addEventListener('click', async () => {
-      if (confirm('Are you sure you want to clear all statistics?')) {
-        await clearStatistics();
-        await loadStatistics();
-      }
     });
   }
 
