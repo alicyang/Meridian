@@ -6,6 +6,12 @@ console.log('HelpMyMom content script loaded!');
 let currentTooltip = null;
 let selectedText = '';
 
+function formatTextForTooltip(text) {
+  return text
+    .replace(/\n\n/g, '<br><br>') // preserve paragraph breaks
+    .replace(/\n/g, '<br>');      // single line breaks
+}
+
 // Third-party Origin Trial token for content script (you'll need to get this separately)
 const THIRD_PARTY_TOKEN = "A9MnSBAMijg6fw2OqxYOjhIPOi2IrmNIzoNRWqzGPRFPYtGlezUKQ1dtf5Wm/nEceqENv1WHE3Cd1SksdhzMRQ4AAACMeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vYXBqY3Bvb2ppZWxpZGRnbmlqZXBkbGdscGNoY2dsY28iLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElGb3JFeHRlbnNpb24iLCJleHBpcnkiOjE3NjA0ODYzOTksImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="; // Set this when you get the third-party token
 
@@ -124,7 +130,7 @@ function showInlineExplanationTooltip(originalText, explanation) {
         </div>
         <div class="explanation-section">
           <strong>Simple explanation:</strong>
-          <p>${explanation}</p>
+          <p>${formatTextForTooltip(explanation)}</p>
         </div>
       </div>
       <div class="inline-tooltip-footer">
@@ -243,7 +249,7 @@ function showExplanationTooltip(originalText, explanation) {
         </div>
         <div class="explanation-text">
           <strong>Simple explanation:</strong>
-          <p>${explanation}</p>
+          <p>${formatTextForTooltip(explanation)}</p>
         </div>
         <div class="tooltip-actions">
           <button class="action-btn" id="better-explanation-btn">
