@@ -43,36 +43,47 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 // Chrome Built-in AI (Gemini Nano) - Local processing
-async function explainWithLocalAI(text) {
+// --- Session manager for Gemini Nano (centralized in background) ---
+let nanoSession = null;           // holds the active session (if any)
+let sessionCreating = false;     // prevent parallel session creates
+
+async function getNanoSession() {
+  // Reuse if already created
+  if (nanoSession) return nanoSession;
+
+  // Prevent concurrent session creation attempts
+  if (sessionCreating) {
+    // wait until it's created (polling small delay)
+    while (sessionCreating) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return nanoSession;
+  }
+
+  sessionCreating = true;
   try {
-    // Debug: Log what's available
-    console.log('Checking Chrome Built-in AI availability...');
-    console.log('typeof LanguageModel:', typeof LanguageModel);
-    console.log('LanguageModel object:', LanguageModel);
-    
-    // Check if Chrome Built-in AI is available
+    // Defensive checks & helpful errors
     if (typeof LanguageModel === 'undefined') {
-      throw new Error('Chrome Built-in AI not available. The `LanguageModel` object is undefined. This might be because the API is not available in service workers or the feature is not properly enabled.');
+      throw new Error('LanguageModel is undefined in the service worker. The built-in API may not be available here.');
     }
 
-    console.log('Checking LanguageModel availability...');
     const availability = await LanguageModel.availability();
-    console.log('LanguageModel availability:', availability);
-    
+    console.log('LanguageModel availability (background):', availability);
+
     if (availability === 'unavailable') {
-      throw new Error('Chrome Built-in AI is not available on this device.');
+      throw new Error('Built-in AI is unavailable on this device.');
     }
-    
     if (availability === 'downloadable' || availability === 'downloading') {
-      throw new Error('Chrome Built-in AI needs to be downloaded first. Please try again after the download completes.');
+      // You could wait or let the caller handle retrying. For now, throw an informative error.
+      throw new Error('Built-in AI needs to finish downloading first.');
     }
 
-    console.log('Creating LanguageModel session...');
-    const session = await LanguageModel.create({
-      // can modify this prompt to make it more comprehensive
+    // Create the session and store it
+    nanoSession = await LanguageModel.create({
+      // keep the same clear system prompt you had, or make it shorter to save memory
       initialPrompts: [
-        { 
-          role: 'system', 
+        {
+          role: 'system',
           content: `
           You are a patient and clear AI assistant who explains complex or difficult text in **very simple English**. Your job is to make sure even someone with **limited English skills** can understand.
           
@@ -112,48 +123,108 @@ async function explainWithLocalAI(text) {
         topK: 30
       }
     });
-    
-    console.log('Session created, now calling prompt...');
-    const result = await session.prompt([
-      {
-        role: 'user',
-        content: `
-        Please explain the following text using very simple English.  
-        Use the format described above — start with an explanation, then give a list of challenging words with definitions.
 
-        Here is the text:
-        "${text}"
-        `.trim()
-      }
-    ]);
-    
-    console.log('AI response received:', result);
-    return result;
-  } catch (error) {
-    console.error('Local AI error:', error);
-    console.error('Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
-    
-    // Provide more specific error messages
-    if (error.message.includes('not available')) {
-      throw new Error('Chrome Built-in AI is not available. Please update Chrome to version 126+ and enable AI features in chrome://flags/');
-    } else if (error.message.includes('download')) {
-      throw new Error('Chrome Built-in AI needs to be downloaded. Please try again in a few moments.');
-    } else if (error.message.includes('quota')) {
-      throw new Error('AI usage quota exceeded. Please try again later.');
-    } else if (error.message.includes('permission')) {
-      throw new Error('Permission denied. Please check your Chrome settings.');
-    } else {
-      throw new Error(`Local AI failed: ${error.message}`);
-    }
+    // Optional: attach a basic "onClose" idea (some SDKs let you listen for session close)
+    console.log('Nano session created in background');
+
+    return nanoSession;
+  } finally {
+    sessionCreating = false;
   }
 }
 
+// Optional small helper to clear the session (if you want to force reload later)
+function clearNanoSession() {
+  try {
+    // If session exposes a close/dispose method, call it here
+    if (nanoSession && typeof nanoSession.close === 'function') {
+      try { nanoSession.close(); } catch (e) { /* ignore */ }
+    }
+  } finally {
+    nanoSession = null;
+  }
+}
+
+// --- New message handler for EXPLAIN_SELECTION ---
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Keep existing handlers (getSettings, explainText, etc.) by returning early if not our new type.
+  if (message?.type === 'EXPLAIN_SELECTION') {
+    // Message shape: { type: 'EXPLAIN_SELECTION', text: 'selected text', options: { ... } }
+    (async () => {
+      try {
+        const text = (message.text || '').trim();
+        if (!text) {
+          sendResponse({ success: false, error: 'No text provided' });
+          return;
+        }
+
+        // Ask background to prepare session (or error out)
+        const session = await getNanoSession();
+
+        // Prompt the session; some SDKs return an object, adapt accordingly
+        const result = await session.prompt([
+          { role: 'user', 
+            content: `
+              Please explain the following text using very simple English.  
+              Use the format described above — start with an explanation, then give a list of challenging words with definitions.
+      
+              Here is the text:
+              "${text}"
+            `.trim() }
+        ]);
+
+        // `result` may be a string or object depending on API; adapt to your runtime
+        const textResult = (typeof result === 'string') ? result : (result?.toString ? result.toString() : result);
+
+        sendResponse({ success: true, explanation: textResult });
+      } catch (err) {
+        console.error('EXPLAIN_SELECTION error in background:', err);
+        // If usefully specific, return a clearer message
+        sendResponse({ success: false, error: err?.message || 'Unknown error' });
+      }
+    })();
+
+    // Tell Chrome we will call sendResponse asynchronously
+    return true;
+  }
+
+  // --- keep your previous onMessage handlers here (getSettings, explainText) ---
+  // Example: if you already had getSettings/explainText handling, keep them.
+  if (message.action === "getSettings") {
+    chrome.storage.sync.get(['targetLanguage', 'preferredAI'], (result) => {
+      sendResponse({
+        targetLanguage: result.targetLanguage || 'en',
+        preferredAI: result.preferredAI || 'local'
+      });
+    });
+    return true;
+  }
+
+  if (message.action === "explainText") {
+    // If you still want to support the old flow, forward to the centralized session as well:
+    (async () => {
+      try {
+        const text = (message.text || '').trim();
+        if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
+
+        const session = await getNanoSession();
+        const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
+        const textResult = (typeof result === 'string') ? result : (result?.toString ? result.toString() : result);
+
+        // reply
+        sendResponse({ success: true, explanation: textResult });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  // If we didn't handle it, return false (or let other listeners handle)
+});
+
 // Remote Gemini Pro API fallback
-async function explainWithRemoteAI(text) {
+async function fallbackExplainRemotely(text) {
   try {
     // Note: In a real implementation, you'd need to get the API key from storage
     // For now, we'll simulate the API call
@@ -166,7 +237,36 @@ async function explainWithRemoteAI(text) {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `Please explain this text in simple English for non-native speakers: "${text}"`
+            text: `You are a patient and clear AI assistant who explains complex or difficult text in **very simple English**. Your job is to make sure even someone with **limited English skills** can understand.
+          
+          🔹 Use short, clear sentences.
+          🔹 Break long ideas into smaller parts.
+          🔹 Avoid big words or advanced grammar.
+          🔹 Explain hard words or phrases in parentheses.
+          🔹 Use easy examples when helpful.
+          🔹 Do not include any extra or off-topic information.
+          
+          🔸 Use this output format:
+          
+          📘 **Explanation**  
+          Write a short and clear explanation here using simple English 2-4 sentences maximum.  
+          Break things into steps if needed. Use line breaks for each idea.End this section with **two line breaks**.
+          
+          🧠 **Challenging Words**  
+          List any difficult words or phrases from the original text with simple definitions.  
+          Use this format:
+          - "word or phrase" = simple definition
+          
+          Do not include any sections beyond this format.
+
+          Here is an example of the output format:
+          📘 **Explanation**  
+          The Earth goes around the Sun.  
+          It takes one year to complete a full circle.  
+          This is called Earth's orbit.
+
+          🧠 **Challenging Words**  
+          - "orbit" = the path something follows around another thing`.trim()
           }]
         }]
       })
@@ -199,7 +299,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   if (request.action === "explainText") {
     // Handle explain text request from content script
-    handleExplainTextRequest(request, sender, sendResponse);
+    getNanoSession(request, sender, sendResponse);
     return true; // Keep message channel open for async response
   }
 });
@@ -223,7 +323,21 @@ async function handleExplainTextRequest(request, sender, sendResponse) {
     // Try Chrome Built-in AI first (Gemini Nano)
     let explanation;
     try {
-      explanation = await explainWithLocalAI(text);
+      const session = await getNanoSession(); // create or reuse model session
+
+      const promptText = `
+        Please explain the following text using simple English for non-native speakers:
+        "${text}"
+      `.trim();
+
+      // Ask Gemini Nano for a response
+      const result = await session.prompt([{ role: 'user', content: promptText }]);
+
+      // Handle string/object return types
+      explanation =
+        typeof result === 'string'
+          ? result
+          : result?.output || result?.toString?.() || JSON.stringify(result);
     } catch (localError) {
       console.log('Local AI failed:', localError.message);
       // For now, show a helpful error message since remote API is not configured

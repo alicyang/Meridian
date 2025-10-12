@@ -59,42 +59,13 @@ function setupEventListeners() {
   // Explain selection via LanguageModel (Prompt API)
   const explainBtn = document.getElementById('explainSelected');
   const aiStatus = document.getElementById('aiStatus');
+
   if (explainBtn) {
     explainBtn.addEventListener('click', async () => {
       try {
-        if (aiStatus) aiStatus.textContent = 'Checking model availability…';
+        if (aiStatus) aiStatus.textContent = 'Getting selected text…';
 
-        // The user gesture (this click) allows download/instantiate
-        if (typeof LanguageModel === 'undefined') {
-          throw new Error('LanguageModel API not available in this context.');
-        }
-
-        const availability = await LanguageModel.availability();
-        if (aiStatus) aiStatus.textContent = `Model status: ${availability}`;
-
-        if (availability === 'unavailable') {
-          throw new Error('Built-in AI is unavailable on this device.');
-        }
-
-        const params = await LanguageModel.params();
-        const controller = new AbortController();
-
-        const session = await LanguageModel.create({
-          signal: controller.signal,
-          monitor(m) {
-            m.addEventListener('downloadprogress', (e) => {
-              if (!e || typeof e.loaded !== 'number') return;
-              if (aiStatus) aiStatus.textContent = `Downloading model… ${Math.round(e.loaded * 100)}%`;
-            });
-          },
-          initialPrompts: [
-            { role: 'system', content: 'You explain selected website text in simple, clear English for non‑native speakers.' }
-          ]
-        });
-
-        if (aiStatus) aiStatus.textContent = 'Model ready. Fetching selected text…';
-
-        // Get the highlighted selection from the active tab
+        // Step 1: Get selection
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab?.id) throw new Error('No active tab found.');
 
@@ -105,20 +76,29 @@ function setupEventListeners() {
 
         const selectedText = (selection || '').trim();
         if (!selectedText) {
-          if (aiStatus) aiStatus.textContent = 'Select text on the page, then click “Explain selection”.';
+          aiStatus.textContent = 'Select text on the page first.';
           return;
         }
 
-        if (aiStatus) aiStatus.textContent = 'Generating explanation…';
-        const response = await session.prompt([
-          { role: 'user', content: `Explain this in simple English: "${selectedText}"` }
-        ]);
+        // Step 2: Call background to generate explanation
+        aiStatus.textContent = 'Sending to AI...';
+        const response = await chrome.runtime.sendMessage({
+          action: 'explainText',
+          text: selectedText,
+          useRemote: false // you can toggle this based on user setting
+        });
 
-        if (aiStatus) aiStatus.textContent = 'Done.';
-        alert(response); // minimal MVP; later pipe into content.js tooltip
+        // Step 3: Show result
+        if (response.success) {
+          aiStatus.textContent = 'Done.';
+          alert(response.explanation);
+        } else {
+          aiStatus.textContent = `Error: ${response.error}`;
+        }
+
       } catch (err) {
-        console.error('Explain via popup error:', err);
-        if (aiStatus) aiStatus.textContent = `Error: ${err.message}`;
+        console.error('Popup explain error:', err);
+        aiStatus.textContent = `Error: ${err.message}`;
       }
     });
   }
@@ -134,26 +114,6 @@ async function saveSetting(key, value) {
   }
 }
 
-// Clear all statistics
-async function clearStatistics() {
-  try {
-    await chrome.storage.local.set({
-      textsExplained: 0,
-      sessionCount: 0,
-      lastUsed: null
-    });
-    console.log('Statistics cleared');
-  } catch (error) {
-    console.error('Error clearing statistics:', error);
-  }
-}
-
-// Listen for messages from background script to update statistics
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'updateStats') {
-    loadStatistics();
-  }
-});
 
 // Handle popup close
 window.addEventListener('beforeunload', () => {
