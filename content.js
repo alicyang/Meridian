@@ -56,59 +56,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Handle inline explanation with AI
-async function handleInlineExplanation(text) {
-  try {
-    // Show loading state first
-    showInlineLoadingTooltip(text);
-    
-    // Inject Origin Trial token if available
-    if (THIRD_PARTY_TOKEN) {
-      injectOriginTrialToken(THIRD_PARTY_TOKEN);
-    }
-    
-    // Check if LanguageModel is available
-    if (typeof LanguageModel === 'undefined') {
-      throw new Error('LanguageModel API not available in content script. You may need a third-party Origin Trial token.');
-    }
-    
-    // Check availability
-    const availability = await LanguageModel.availability();
-    console.log('LanguageModel availability in content script:', availability);
-    
-    if (availability === 'unavailable') {
-      throw new Error('Chrome Built-in AI is not available on this device.');
-    }
-    
-    if (availability === 'downloadable' || availability === 'downloading') {
-      throw new Error('Chrome Built-in AI needs to be downloaded first. Please use the extension popup to download the model.');
-    }
-    
-    // Create session (no explicit temperature/topK to avoid validation errors)
-    const session = await LanguageModel.create({
-      initialPrompts: [
-        { 
-          role: 'system', 
-          content: 'You are a helpful assistant that explains text in simple, clear English for non-native speakers. Focus on making complex concepts easy to understand.' 
-        }
-      ]
-    });
-    
-    // Get explanation
-    const result = await session.prompt([
-      {
-        role: 'user',
-        content: `Please explain this text in simple English: "${text}"`
-      }
-    ]);
-    
-    // Show inline explanation tooltip
-    showInlineExplanationTooltip(text, result);
-    
-  } catch (error) {
-    console.error('Inline explanation error:', error);
-    showInlineErrorTooltip(text, error.message);
-  }
+function handleInlineExplanation(text) {
+  chrome.runtime.sendMessage({
+    action: 'explainText',
+    text: text
+  });
 }
 
 // Show loading state while AI processes

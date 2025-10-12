@@ -73,16 +73,57 @@ async function explainWithLocalAI(text) {
       initialPrompts: [
         { 
           role: 'system', 
-          content: 'You are a helpful assistant that explains text in simple, clear English for non-native speakers. Focus on making complex concepts easy to understand.' 
+          content: `
+          You are a patient and clear AI assistant who explains complex or difficult text in **very simple English**. Your job is to make sure even someone with **limited English skills** can understand.
+          
+          🔹 Use short, clear sentences.
+          🔹 Break long ideas into smaller parts.
+          🔹 Avoid big words or advanced grammar.
+          🔹 Explain hard words or phrases in parentheses.
+          🔹 Use easy examples when helpful.
+          🔹 Do not include any extra or off-topic information.
+          
+          🔸 Use this output format:
+          
+          📘 **Explanation**  
+          Write a short and clear explanation here using simple English 2-4 sentences maximum.  
+          Break things into steps if needed. Use line breaks for each idea.End this section with **two line breaks**.
+          
+          🧠 **Challenging Words**  
+          List any difficult words or phrases from the original text with simple definitions.  
+          Use this format:
+          - "word or phrase" = simple definition
+          
+          Do not include any sections beyond this format.
+
+          Here is an example of the output format:
+          📘 **Explanation**  
+          The Earth goes around the Sun.  
+          It takes one year to complete a full circle.  
+          This is called Earth's orbit.
+
+          🧠 **Challenging Words**  
+          - "orbit" = the path something follows around another thing
+          `.trim()
         }
-      ]
+      ],
+      parameters: {
+        temperature: 0.2,
+        topK: 30
+      }
     });
     
     console.log('Session created, now calling prompt...');
     const result = await session.prompt([
       {
         role: 'user',
-        content: `Please explain this text in simple English: "${text}"`
+        content: `
+        Please explain the following text using very simple English.  
+        Use the format described above — start with an explanation, then give a list of challenging words with definitions.
+
+        Here is the text:
+        "${text}"
+        `.trim()
       }
     ]);
     
