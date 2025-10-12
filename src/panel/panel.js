@@ -3,6 +3,8 @@ import * as smd from '../../smd.js';
 const submitBtn = document.getElementById("submit-btn");
 const assistantResponseBox = document.getElementById("assistant-response-box");
 const assistantLoader = document.getElementById("assistant-loader")
+const smartSearchDiv = document.getElementById("smart-search")
+const notAvailableDiv = document.getElementById("not-available")
 
 const searchSessionMap = new Map(); // {tab_url: {session}}
 let currSearchSession = null;
@@ -32,37 +34,66 @@ async function start() {
 		expectedOutputs: [{ type: "text", languages: ["en"] }],
 	});
 
+	// Set up the initial session 
 	chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 		if (tabs.length === 0) return;
 		const tab = tabs[0];
+		const isAccessible = await checkAccessPermissions(tab.url);
+		if (!isAccessible) {
+			notAvailableDiv.style.display = "block";
+			smartSearchDiv.style.display = "none";
+			contextIsReady = true;
+			return;
+		} 
 		await addNewSearchSession(tab);
 		currSearchSession = searchSessionMap.get(tab.url);
 		currSearchSessionUrl = tab.url;
 		contextIsReady = true;
 	});
 
+	chrome.tabs.onActivated.addListener(async (activeInfo) => {
+		contextIsReady = false; 
+		const tab = await chrome.tabs.get(activeInfo.tabId);
+		const isAccessible = await checkAccessPermissions(tab.url)
+		if (!isAccessible) {
+			notAvailableDiv.style.display = "block"
+			smartSearchDiv.style.display = "none"
+			contextIsReady = true; 
+			return 
+		} 
+		notAvailableDiv.style.display = "none";
+		smartSearchDiv.style.display = "block"
+		
+		if (searchSessionMap.get(tab.url) == null) {
+			await addNewSearchSession(tab);
+		}
+		// update the current session to the new session 
+		while (modelIsBusy) {
+			await new Promise(resolve => setTimeout(resolve, 50));
+		}
+		currSearchSession = searchSessionMap.get(tab.url);
+		currSearchSessionUrl = tab.url
+		contextIsReady = true; 
+	});
+
 	// Fires when a tab is updated (URL changes, page reloads)
 	chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-		contextIsReady = false; 
 		if (changeInfo.status === "complete") {
+			// check if this URL can be accessed 
+			const isAccessible = await checkAccessPermissions(tab.url) 
+			if (!isAccessible) {
+				return
+			}
 			await addNewSearchSession(tab);
-			while (modelIsBusy) {
-				await new Promise(resolve => setTimeout(resolve, 50));
-			}
-			currSearchSession = searchSessionMap.get(tab.url)
-			currSearchSessionUrl = tab.url
-		}
-		contextIsReady = true; 
-		if (searchSessionMap.size > 10) {
-			for (const [key] of searchSessionMap) {
-				if (key !== currSearchSessionUrl) {
-					searchSessionMap.delete(key);
-					break;
-				}
-			}
 		}
 	});
 }
+
+async function checkAccessPermissions(url) {
+	const isAccessible = url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://");
+	const hasPermission = await chrome.permissions.contains({ origins: [url] });
+	return isAccessible && hasPermission
+} 
 
 /**
  * Handles the page change: recomb the page and clone a new session
@@ -78,6 +109,14 @@ async function addNewSearchSession(tab) {
 			{ role: "system", content: JSON.stringify(data) }
 		]);
 		searchSessionMap.set(tab.url, newSearchSession);
+		if (searchSessionMap.size > 10) {
+			for (const [key] of searchSessionMap) {
+				if (key !== currSearchSessionUrl) {
+					searchSessionMap.delete(key);
+					break;
+				}
+			}
+		}
 	} catch (err) {
 		console.error("Failed to handle page change:", err);
 	}

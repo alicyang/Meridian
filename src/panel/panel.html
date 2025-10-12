@@ -8,17 +8,22 @@
 
 <body>
     <div id="extension-panel">
-        <h1>Smart Search</h1>
-        <textarea id='user-input' placeholder="What would you like to search for?"></textarea>
-        <button id="submit-btn" type="submit">Search</button>
-        
-        <div id="language-model-box">
-            <div class="loader-container">
-                <div class="loader" id="assistant-loader"></div>
+        <div id="smart-search">
+            <h1>Smart Search</h1>
+            <textarea id='user-input' placeholder="What would you like to search for?"></textarea>
+            <button id="submit-btn" type="submit">Search</button>
+            
+            <div id="language-model-box">
+                <div class="loader-container">
+                    <div class="loader" id="assistant-loader"></div>
+                </div>
+                <div id="assistant-response-box">
+                    <p>Assistant's Response will appear below.</p>
+                </div>
             </div>
-            <div id="assistant-response-box">
-                <p>Assistant's Response will appear below.</p>
-            </div>
+        </div>
+        <div id="not-available">
+            <p>Smart Search is not available on this page</p>
         </div>
     </div>
     <script type="module" src="panel.js"></script>
