@@ -209,11 +209,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const session = await getNanoSession();
         const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
-        const textResult = (typeof result === 'string') ? result : (result?.toString ? result.toString() : result);
+        const explanation = 
+          typeof result === 'string'
+            ? result
+            : (result?.toString?.() || JSON.stringify(result));
 
-        // reply
-        sendResponse({ success: true, explanation: textResult });
+        if (sender.tab && sender.tab.id) {
+          // Send message back to page for inline tooltip
+          chrome.tabs.sendMessage(sender.tab.id, {
+            action: "showInlineExplanationTooltip",
+            text,
+            explanation
+          });
+        } else {
+          // Message came from popup → just respond directly
+          sendResponse({ success: true, explanation });
+        }
+
       } catch (err) {
+        console.error('❌ explainText error:', err);
+        // Tell the content script to show an inline error tooltip
+        if (sender.tab && sender.tab.id) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            action: "showInlineErrorTooltip",
+            text,
+            error: err.message
+          });
+        }
+        // Always respond to popup
         sendResponse({ success: false, error: err.message });
       }
     })();
@@ -223,88 +246,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // If we didn't handle it, return false (or let other listeners handle)
 });
 
-// Remote Gemini Pro API fallback
-async function fallbackExplainRemotely(text) {
-  try {
-    // Note: In a real implementation, you'd need to get the API key from storage
-    // For now, we'll simulate the API call
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // 'Authorization': `Bearer ${apiKey}` // You'd get this from storage
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `You are a patient and clear AI assistant who explains complex or difficult text in **very simple English**. Your job is to make sure even someone with **limited English skills** can understand.
-          
-          🔹 Use short, clear sentences.
-          🔹 Break long ideas into smaller parts.
-          🔹 Avoid big words or advanced grammar.
-          🔹 Explain hard words or phrases in parentheses.
-          🔹 Use easy examples when helpful.
-          🔹 Do not include any extra or off-topic information.
-          
-          🔸 Use this output format:
-          
-          📘 **Explanation**  
-          Write a short and clear explanation here using simple English 2-4 sentences maximum.  
-          Break things into steps if needed. Use line breaks for each idea.End this section with **two line breaks**.
-          
-          🧠 **Challenging Words**  
-          List any difficult words or phrases from the original text with simple definitions.  
-          Use this format:
-          - "word or phrase" = simple definition
-          
-          Do not include any sections beyond this format.
-
-          Here is an example of the output format:
-          📘 **Explanation**  
-          The Earth goes around the Sun.  
-          It takes one year to complete a full circle.  
-          This is called Earth's orbit.
-
-          🧠 **Challenging Words**  
-          - "orbit" = the path something follows around another thing`.trim()
-          }]
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Remote API failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
-  } catch (error) {
-    console.error('Remote AI error:', error);
-    throw error;
-  }
-}
-
-// Handle messages from content script
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "getSettings") {
-    // Get user settings from storage
-    chrome.storage.sync.get(['targetLanguage', 'preferredAI'], (result) => {
-      sendResponse({
-        targetLanguage: result.targetLanguage || 'en',
-        preferredAI: result.preferredAI || 'local'
-      });
-    });
-    return true; // Keep message channel open for async response
-  }
-  
-  if (request.action === "explainText") {
-    // Handle explain text request from content script
-    getNanoSession(request, sender, sendResponse);
-    return true; // Keep message channel open for async response
-  }
-});
-
 // Handle explain text requests from content script
+
 async function handleExplainTextRequest(request, sender, sendResponse) {
   const { text, useRemote } = request;
   

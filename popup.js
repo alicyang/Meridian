@@ -82,10 +82,21 @@ function setupEventListeners() {
 
         // Step 2: Call background to generate explanation
         aiStatus.textContent = 'Sending to AI...';
-        const response = await chrome.runtime.sendMessage({
-          action: 'explainText',
-          text: selectedText,
-          useRemote: false // you can toggle this based on user setting
+        const response = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            {
+              action: 'explainText',
+              text: selectedText,
+              useRemote: false
+            },
+            (res) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(res);
+              }
+            }
+          );
         });
 
         // Step 3: Show result

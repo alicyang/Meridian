@@ -6,6 +6,15 @@ console.log('HelpMyMom content script loaded!');
 let currentTooltip = null;
 let selectedText = '';
 
+let lastSelectionRect = null;
+
+document.addEventListener('mouseup', () => {
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    lastSelectionRect = selection.getRangeAt(0).getBoundingClientRect();
+  }
+});
+
 function formatTextForTooltip(text) {
   return text
     .replace(/\n\n/g, '<br><br>') // preserve paragraph breaks
@@ -57,8 +66,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.log('Showing inline explanation for:', request.text);
       handleInlineExplanation(request.text);
       break;
+      case 'showInlineLoadingTooltip':
+        console.log('Showing inline loading tooltip for:', request.text);
+        showInlineLoadingTooltip(request.text);
+        break;
+  
+      case 'showInlineExplanationTooltip':
+        console.log('Showing inline explanation tooltip for:', request.text);
+        showInlineExplanationTooltip(request.text, request.explanation);
+        break;
+  
+      case 'showInlineErrorTooltip':
+        console.log('Showing inline error tooltip for:', request.text);
+        showInlineErrorTooltip(request.text, request.error);
+        break;
     default:
       console.log('Unknown action:', request.action);
+      
   }
 });
 
@@ -189,12 +213,22 @@ function positionInlineTooltip() {
   if (!currentTooltip) return;
   
   const selection = window.getSelection();
-  if (selection.rangeCount === 0) return;
-  
-  const range = selection.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
+  let rect = null;
+
+  if (selection.rangeCount > 0) {
+    rect = selection.getRangeAt(0).getBoundingClientRect();
+  } else if (lastSelectionRect) {
+    rect = lastSelectionRect;
+  } else {
+    console.warn('No selection rect found; cannot position tooltip');
+    return;
+  }
   
   const tooltip = currentTooltip.querySelector('.helpmymom-inline-tooltip');
+  if (!tooltip) {
+    console.warn("Tooltip element not found — skipping position update.");
+    return; // stop here safely
+  }
   const tooltipRect = tooltip.getBoundingClientRect();
   
   // Position tooltip above selection, centered
