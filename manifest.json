@@ -35,5 +35,11 @@
   },
   "trial_tokens": [
     "A9MnSBAMijg6fw2OqxYOjhIPOi2IrmNIzoNRWqzGPRFPYtGlezUKQ1dtf5Wm/nEceqENv1WHE3Cd1SksdhzMRQ4AAACMeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vYXBqY3Bvb2ppZWxpZGRnbmlqZXBkbGdscGNoY2dsY28iLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElGb3JFeHRlbnNpb24iLCJleHBpcnkiOjE3NjA0ODYzOTksImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
-  ]
+  ],
+    "web_accessible_resources": [
+      {
+        "resources": ["pdf-viewer/*"],
+        "matches": ["<all_urls>"]
+      }
+    ]
 }
