@@ -23,21 +23,34 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   
   if (info.menuItemId === "explain-text" && info.selectionText) {
     const selectedText = info.selectionText.trim();
-    console.log('Processing selected text for inline tooltip:', selectedText);
-    
-    if (selectedText.length === 0) {
-      console.log('No text selected, returning');
-      return;
-    }
 
-    try {
-      // Send message to content script to handle inline tooltip
-      chrome.tabs.sendMessage(tab.id, {
+    // check if its an extension page
+    if (tab.url.startsWith('chrome-extension://')) {
+
+      console.log('Processing selected text for inline tooltip:', selectedText);
+
+      chrome.runtime.sendMessage(tab.id, {
         action: "showInlineExplanation",
         text: selectedText
       });
-    } catch (error) {
-      console.error('Error sending message to content script:', error);
+    } else {
+
+      console.log('Processing selected text for inline tooltip:', selectedText);
+      
+      if (selectedText.length === 0) {
+        console.log('No text selected, returning');
+        return;
+      }
+
+      try {
+        // Send message to content script to handle inline tooltip
+        chrome.tabs.sendMessage(tab.id, {
+          action: "showInlineExplanation",
+          text: selectedText
+        });
+      } catch (error) {
+        console.error('Error sending message to content script:', error);
+      }
     }
   }
 });
@@ -185,6 +198,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
 
     // Tell Chrome we will call sendResponse asynchronously
+    return true;
+  }
+
+  if (message.action === 'explainText' && message.source === 'pdf_viewer') {
+    (async () => {
+      try {
+        const text = (message.text || '').trim();
+        if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
+
+        // using existing AI session
+        const session = await getNanoSession();
+        const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
+
+        const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
+
+        // send response back to PDF viewer
+        chrome.tabs.sendMessage(sender.tab.id, {
+          action: "showExplanation",
+          explanation: explanation
+        });
+        sendResponse({ success: true, explanation: explanation });
+      } catch (err) {
+        console.error('PDF explainText error:', err);
+        sendResponse({ success: false, error: err?.message || 'Unknown error' });
+      }
+    })();
     return true;
   }
 
