@@ -75,6 +75,14 @@ async function getNanoSession() {
 
   sessionCreating = true;
   try {
+    // Get user's language preference
+    const settings = await chrome.storage.sync.get(['targetLanguage']);
+    const targetLanguage = settings.targetLanguage || 'en';
+    
+    // Validate language (only support en, ja, es)
+    const supportedLanguages = ['en', 'ja', 'es'];
+    const language = supportedLanguages.includes(targetLanguage) ? targetLanguage : 'en';
+
     // Defensive checks & helpful errors
     if (typeof LanguageModel === 'undefined') {
       throw new Error('LanguageModel is undefined in the service worker. The built-in API may not be available here.');
@@ -87,13 +95,20 @@ async function getNanoSession() {
       throw new Error('Built-in AI is unavailable on this device.');
     }
     if (availability === 'downloadable' || availability === 'downloading') {
-      // You could wait or let the caller handle retrying. For now, throw an informative error.
+      // throw an informative error.
       throw new Error('Built-in AI needs to finish downloading first.');
     }
 
     // Create the session and store it
     nanoSession = await LanguageModel.create({
-      // keep the same clear system prompt you had, or make it shorter to save memory
+      // language-specific inputs/outputs
+      expectedInputs: [
+        { type: "text", languages: ["en", language] } // System prompt in English, user input in selected language
+      ],
+      expectedOutputs: [
+        { type: "text", languages: [language] } // Output in selected language
+      ],
+      // system prompt
       initialPrompts: [
         {
           role: 'system',
@@ -141,7 +156,11 @@ async function getNanoSession() {
     console.log('Nano session created in background');
 
     return nanoSession;
-  } finally {
+  } catch (error) {
+    console.error('Error creating nano session:', error);
+    throw error;
+  }
+   finally {
     sessionCreating = false;
   }
 }

@@ -40,6 +40,10 @@
       {
         "resources": ["pdf-viewer/*"],
         "matches": ["<all_urls>"]
+      },
+      {
+        "resources": ["shared/*"],
+        "matches": ["<all_urls>"]
       }
     ]
 }

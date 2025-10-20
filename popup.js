@@ -69,10 +69,23 @@ function setupEventListeners() {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab?.id) throw new Error('No active tab found.');
 
-        const [{ result: selection }] = await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => (window.getSelection ? String(window.getSelection()) : '')
-        });
+        let selection = '';
+        if (tab.url.startsWith('chrome-extension://')) {
+          // PDF viewer - use runtime messaging
+          try {
+            const response = await chrome.tabs.sendMessage(tab.id, { action: 'getSelectedText' });
+            selection = response ? response.text : '';
+          } catch (error) {
+            console.log('PDF viewer not responding to messages');
+            selection = '';
+          }
+        } else {
+          // Regular webpage - use scripting API
+          const [{ result: selection }] = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => (window.getSelection ? String(window.getSelection()) : '')
+          });
+        }
 
         const selectedText = (selection || '').trim();
         if (!selectedText) {

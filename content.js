@@ -1,5 +1,7 @@
 // Content script for HelpMyMom extension
 // Handles text selection, tooltip display, and user interactions
+// Add this at the top of your content.js
+let tooltipFunctions = null;
 
 console.log('HelpMyMom content script loaded!');
 
@@ -7,6 +9,15 @@ let currentTooltip = null;
 let selectedText = '';
 
 let lastSelectionRect = null;
+
+// Load the tooltip functions when needed
+async function loadTooltipFunctions() {
+  if (!tooltipFunctions) {
+    const module = await import('./shared/tooltip.js');
+    tooltipFunctions = module;
+  }
+  return tooltipFunctions;
+}
 
 document.addEventListener('mouseup', () => {
   const selection = window.getSelection();
@@ -114,89 +125,21 @@ function showLoadingTooltip(text) {
   positionTooltip();
 }
 
-// Show inline loading tooltip (Wikipedia-style)
-function showInlineLoadingTooltip(text) {
-  selectedText = text;
-  removeExistingTooltip();
-  
-  currentTooltip = createInlineTooltip(`
-    <div class="helpmymom-inline-tooltip loading">
-      <div class="inline-tooltip-header">
-        <div class="inline-tooltip-icon">🤖</div>
-        <div class="inline-tooltip-title">HelpMyMom</div>
-        <div class="inline-tooltip-subtitle">AI Assistant</div>
-      </div>
-      <div class="inline-tooltip-content">
-        <div class="loading-spinner"></div>
-        <p>Analyzing your text...</p>
-      </div>
-    </div>
-  `);
-  
-  positionInlineTooltip();
+async function showInlineLoadingTooltip(text) {
+  const tooltips = await loadTooltipFunctions();
+  tooltips.showInlineLoadingTooltip(text);
 }
 
-// Show inline explanation tooltip (Wikipedia-style)
-function showInlineExplanationTooltip(originalText, explanation) {
-  removeExistingTooltip();
-  
-  currentTooltip = createInlineTooltip(`
-    <div class="helpmymom-inline-tooltip explanation">
-      <div class="inline-tooltip-header">
-        <div class="inline-tooltip-icon">💡</div>
-        <div class="inline-tooltip-title">Simple Explanation</div>
-        <div class="inline-tooltip-subtitle">HelpMyMom AI</div>
-      </div>
-      <div class="inline-tooltip-content">
-        <div class="original-text-section">
-          <strong>Selected text:</strong>
-          <p>"${originalText}"</p>
-        </div>
-        <div class="explanation-section">
-          <strong>Simple explanation:</strong>
-          <p>${formatTextForTooltip(explanation)}</p>
-        </div>
-      </div>
-      <div class="inline-tooltip-footer">
-        <button class="inline-close-btn" id="inline-close-btn">×</button>
-      </div>
-    </div>
-  `);
-  
-  setupInlineTooltipEventListeners();
-  positionInlineTooltip();
+// Show inline explanation tooltip
+async function showInlineExplanationTooltip(originalText, explanation) {
+  const tooltips = await loadTooltipFunctions();
+  tooltips.showInlineExplanationTooltip(originalText, explanation);
 }
 
-// Show inline error tooltip (Wikipedia-style)
-function showInlineErrorTooltip(text, errorMessage) {
-  removeExistingTooltip();
-  
-  currentTooltip = createInlineTooltip(`
-    <div class="helpmymom-inline-tooltip error">
-      <div class="inline-tooltip-header">
-        <div class="inline-tooltip-icon">⚠️</div>
-        <div class="inline-tooltip-title">Error</div>
-        <div class="inline-tooltip-subtitle">HelpMyMom AI</div>
-      </div>
-      <div class="inline-tooltip-content">
-        <p>${errorMessage}</p>
-        <div class="help-section">
-          <strong>Try this instead:</strong>
-          <ol>
-            <li>Use the extension popup to download the AI model first</li>
-            <li>Make sure you have Chrome 126+ with AI features enabled</li>
-            <li>Try again after the model is downloaded</li>
-          </ol>
-        </div>
-      </div>
-      <div class="inline-tooltip-footer">
-        <button class="inline-close-btn" id="inline-close-btn">×</button>
-      </div>
-    </div>
-  `);
-  
-  setupInlineTooltipEventListeners();
-  positionInlineTooltip();
+// Show inline error tooltip
+async function showInlineErrorTooltip(text, errorMessage) {
+  const tooltips = await loadTooltipFunctions();
+  tooltips.showInlineErrorTooltip(text, errorMessage);
 }
 
 // Create inline tooltip element
