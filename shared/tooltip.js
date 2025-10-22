@@ -23,7 +23,6 @@ export function showLoadingTooltip(text){
     currentTooltip = createTooltip(`
         <div class="helpmymom-tooltip loading">
         <div class="tooltip-header">
-            <span class="tooltip-icon">🤖</span>
             <span class="tooltip-title">Explaining...</span>
         </div>
         <div class="tooltip-content">
@@ -43,7 +42,6 @@ export function showInlineLoadingTooltip(text){
   currentTooltip = createInlineTooltip(`
     <div class="helpmymom-inline-tooltip loading">
       <div class="inline-tooltip-header">
-        <div class="inline-tooltip-icon">🤖</div>
         <div class="inline-tooltip-title">HelpMyMom</div>
         <div class="inline-tooltip-subtitle">AI Assistant</div>
       </div>
@@ -62,9 +60,8 @@ export function showInlineExplanationTooltip(originalText, explanation){
   currentTooltip = createInlineTooltip(`
     <div class="helpmymom-inline-tooltip explanation">
       <div class="inline-tooltip-header">
-        <div class="inline-tooltip-icon">💡</div>
-        <div class="inline-tooltip-title">Simple Explanation</div>
-        <div class="inline-tooltip-subtitle">HelpMyMom AI</div>
+        <div class="inline-tooltip-title">Explanation</div>
+        <div class="inline-tooltip-subtitle">Meridian</div>
       </div>
       <div class="inline-tooltip-content">
         <div class="original-text-section">
@@ -72,7 +69,7 @@ export function showInlineExplanationTooltip(originalText, explanation){
           <p>"${originalText}"</p>
         </div>
         <div class="explanation-section">
-          <strong>Simple explanation:</strong>
+          <strong>Explanation:</strong>
           <p>${formatTextForTooltip(explanation)}</p>
         </div>
       </div>
@@ -92,7 +89,6 @@ export function showInlineErrorTooltip(text, errorMessage){
   currentTooltip = createInlineTooltip(`
     <div class="helpmymom-inline-tooltip error">
       <div class="inline-tooltip-header">
-        <div class="inline-tooltip-icon">⚠️</div>
         <div class="inline-tooltip-title">Error</div>
         <div class="inline-tooltip-subtitle">HelpMyMom AI</div>
       </div>
@@ -190,7 +186,6 @@ export function showExplanationTooltip(originalText, explanation){
   currentTooltip = createTooltip(`
     <div class="helpmymom-tooltip explanation">
       <div class="tooltip-header">
-        <span class="tooltip-icon">💡</span>
         <span class="tooltip-title">Explanation</span>
         <button class="close-btn" id="close-btn">×</button>
       </div>
@@ -243,7 +238,6 @@ export function showErrorTooltip(text, errorMessage){
   currentTooltip = createTooltip(`
     <div class="helpmymom-tooltip error">
       <div class="tooltip-header">
-        <span class="tooltip-icon">⚠️</span>
         <span class="tooltip-title">Error</span>
         <button class="close-btn" id="close-btn">×</button>
       </div>
@@ -350,27 +344,6 @@ export function setupTooltipEventListeners() {
             console.error('Try again error:', error);
             // Show error tooltip if the message fails
             showErrorTooltip(selectedText, `Failed to retry explanation: ${error.message}`);
-          }
-        }
-      });
-    }
-    
-    // Better explanation button
-    const betterExplanationBtn = currentTooltip.querySelector('#better-explanation-btn');
-    if (betterExplanationBtn) {
-      betterExplanationBtn.addEventListener('click', async () => {
-        if (selectedText) {
-          try {
-            const response = await chrome.runtime.sendMessage({
-              action: 'explainText',
-              text: selectedText,
-              useRemote: true
-            });
-            console.log('Better explanation response:', response);
-          } catch (error) {
-            console.error('Better explanation error:', error);
-            // Show error tooltip if the message fails
-            showErrorTooltip(selectedText, `Failed to get better explanation: ${error.message}`);
           }
         }
       });

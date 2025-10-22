@@ -125,13 +125,13 @@ async function getNanoSession() {
           🔸 Use this output format:
           
           📘 **Explanation**  
-          Write a short and clear explanation here using simple English 2-4 sentences maximum.  
+          Write a short and clear explanation here using simple language of user's choosing, 2-4 sentences maximum.  
           Break things into steps if needed. Use line breaks for each idea.End this section with **two line breaks**.
           
           🧠 **Challenging Words**  
           List any difficult words or phrases from the original text with simple definitions.  
           Use this format:
-          - "word or phrase" = simple definition
+          - "word or phrase **in ENGLISH** (no matter what the output language preference is)" = simple definition
           
           Do not include any sections beyond this format.
 
@@ -165,7 +165,7 @@ async function getNanoSession() {
   }
 }
 
-// Optional small helper to clear the session (if you want to force reload later)
+// helper to clear the session (if you want to force reload later)
 function clearNanoSession() {
   try {
     // If session exposes a close/dispose method, call it here
@@ -197,7 +197,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const result = await session.prompt([
           { role: 'user', 
             content: `
-              Please explain the following text using very simple English.  
+              Please explain the following text using very simple language in the language of the speaker's choosing.  
               Use the format described above — start with an explanation, then give a list of challenging words with definitions.
       
               Here is the text:
@@ -205,8 +205,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             `.trim() }
         ]);
 
-        // `result` may be a string or object depending on API; adapt to your runtime
-        const textResult = (typeof result === 'string') ? result : (result?.toString ? result.toString() : result);
+        const textResult = result;
 
         sendResponse({ success: true, explanation: textResult });
       } catch (err) {
@@ -216,7 +215,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     })();
 
-    // Tell Chrome we will call sendResponse asynchronously
+    // Tell Chrome to call sendResponse asynchronously
     return true;
   }
 
@@ -225,6 +224,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         const text = (message.text || '').trim();
         if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
+
+        // Get language preference
+        const settings = await chrome.storage.sync.get(['targetLanguage']);
+        const language = settings.targetLanguage || 'en';
+        
+        // Clear existing session if language changed
+        if (nanoSession && nanoSession.currentLanguage !== language) {
+          clearNanoSession();
+        }
 
         // using existing AI session
         const session = await getNanoSession();
@@ -246,8 +254,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // --- keep your previous onMessage handlers here (getSettings, explainText) ---
-  // Example: if you already had getSettings/explainText handling, keep them.
   if (message.action === "getSettings") {
     chrome.storage.sync.get(['targetLanguage', 'preferredAI'], (result) => {
       sendResponse({
@@ -259,7 +265,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "explainText") {
-    // If you still want to support the old flow, forward to the centralized session as well:
+    
     (async () => {
       try {
         const text = (message.text || '').trim();
@@ -285,7 +291,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
       } catch (err) {
-        console.error('❌ explainText error:', err);
+        console.error('explainText error:', err);
         // Tell the content script to show an inline error tooltip
         if (sender.tab && sender.tab.id) {
           chrome.tabs.sendMessage(sender.tab.id, {
@@ -307,7 +313,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Handle explain text requests from content script
 
 async function handleExplainTextRequest(request, sender, sendResponse) {
-  const { text, useRemote } = request;
+  const text = request;
   
   if (!text || text.trim().length === 0) {
     sendResponse({ success: false, error: "No text provided" });
@@ -327,7 +333,7 @@ async function handleExplainTextRequest(request, sender, sendResponse) {
       const session = await getNanoSession(); // create or reuse model session
 
       const promptText = `
-        Please explain the following text using simple English for non-native speakers:
+        Please explain the following text using simple words in whatever language the user chooses:
         "${text}"
       `.trim();
 
@@ -340,7 +346,7 @@ async function handleExplainTextRequest(request, sender, sendResponse) {
           ? result
           : result?.output || result?.toString?.() || JSON.stringify(result);
     } catch (localError) {
-      console.log('Local AI failed:', localError.message);
+      console.log('AI failed:', localError.message);
       // For now, show a helpful error message since remote API is not configured
       throw new Error(`Chrome Built-in AI is not available. ${localError.message}`);
     }

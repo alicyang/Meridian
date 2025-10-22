@@ -4,7 +4,7 @@ import { EventBus, PDFPageView } from '../node_modules/pdfjs-dist/web/pdf_viewer
 import { showInlineExplanationTooltip, showInlineLoadingTooltip, showInlineErrorTooltip } from '../shared/tooltip.js';
 
 // Chrome extensions cannot load remote files directly,
-// so we use chrome.runtime.getURL() to point to our local worker file.
+// so use chrome.runtime.getURL() to point to our local worker file.
 pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('PDF_VIEWER/pdf.worker.min.mjs');
 
 const pageContainer = document.getElementById('page-container');
@@ -149,7 +149,7 @@ function updatePageInfo() {
     }
   });
 
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((request, sendResponse) => {
     if (request.action === 'getSelectedText') {
       const selectedText = window.getSelection().toString().trim();
       sendResponse({ text: selectedText });
