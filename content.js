@@ -11,11 +11,13 @@ console.log('HelpMyMom content script loaded!');
 
 let currentTooltip = null;
 let lastSelectionRect = null;
+let lastSelectedText = '';
 
 document.addEventListener('mouseup', () => {
   const selection = window.getSelection();
   if (selection && selection.rangeCount > 0) {
     lastSelectionRect = selection.getRangeAt(0).getBoundingClientRect();
+    lastSelectedText = selection.toString().trim(); // Store the text
   }
 });
 
@@ -49,6 +51,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       case 'showInlineExplanationTooltip':
         console.log('Showing inline explanation tooltip for:', request.text);
         module.showInlineExplanationTooltip(request.text, request.explanation);
+        break;
+      
+      case 'getStoredSelection':
+        console.log('Sending text to popup file:', request.text);
+        sendResponse({text: lastSelectedText});
         break;
   
       case 'showInlineErrorTooltip':

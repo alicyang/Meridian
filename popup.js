@@ -80,11 +80,15 @@ function setupEventListeners() {
             selection = '';
           }
         } else {
-          // Regular webpage - use scripting API
-          const [{ result: selection }] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => (window.getSelection ? String(window.getSelection()) : '')
-          });
+          try {
+            const response = await chrome.tabs.sendMessage(tab.id, { 
+              action: 'getStoredSelection' 
+            });
+            selection = response ? response.text : '';
+          } catch (error) {
+            console.log('Could not get stored selection:', error);
+            selection = '';
+          }
         }
 
         const selectedText = (selection || '').trim();
@@ -115,11 +119,22 @@ function setupEventListeners() {
         // Step 3: Show result
         if (response.success) {
           aiStatus.textContent = 'Done.';
-          alert(response.explanation);
+          
+          // Show inline tooltip
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              action: "showInlineExplanationTooltip",
+              text: selectedText,
+              explanation: response.explanation
+            });
+          } catch (error) {
+            console.error('Could not show inline tooltip:', error);
+            // Fallback to alert if tooltip fails
+            alert(response.explanation);
+          }
         } else {
           aiStatus.textContent = `Error: ${response.error}`;
         }
-
       } catch (err) {
         console.error('Popup explain error:', err);
         aiStatus.textContent = `Error: ${err.message}`;
