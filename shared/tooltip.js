@@ -10,13 +10,13 @@ document.addEventListener('mouseup', () => {
     }
   });
 
-export function formatTextForTooltip(text){
+function formatTextForTooltip(text){
     return text
     .replace(/\n\n/g, '<br><br>') // preserve paragraph breaks
     .replace(/\n/g, '<br>');      // single line breaks
 }
 
-export function showLoadingTooltip(text){
+function showLoadingTooltip(text){
     selectedText = text;
     removeExistingTooltip();
     
@@ -35,7 +35,7 @@ export function showLoadingTooltip(text){
   positionTooltip();
 }
 
-export function showInlineLoadingTooltip(text){
+function showInlineLoadingTooltip(text){
    selectedText = text;
   removeExistingTooltip();
   
@@ -54,7 +54,7 @@ export function showInlineLoadingTooltip(text){
   
 }
 
-export function showInlineExplanationTooltip(originalText, explanation){
+function showInlineExplanationTooltip(originalText, explanation){
     removeExistingTooltip();
   
   currentTooltip = createInlineTooltip(`
@@ -83,7 +83,7 @@ export function showInlineExplanationTooltip(originalText, explanation){
   positionInlineTooltip();
 }
 
-export function showInlineErrorTooltip(text, errorMessage){
+function showInlineErrorTooltip(text, errorMessage){
     removeExistingTooltip();
   
   currentTooltip = createInlineTooltip(`
@@ -113,7 +113,7 @@ export function showInlineErrorTooltip(text, errorMessage){
   positionInlineTooltip();
 }
 
-export function createInlineTooltip(html){
+function createInlineTooltip(html){
     const tooltip = document.createElement('div');
     tooltip.innerHTML = html;
     tooltip.className = 'helpmymom-inline-tooltip-container';
@@ -121,7 +121,7 @@ export function createInlineTooltip(html){
     return tooltip;
 }
 
-export function positionInlineTooltip(){
+function positionInlineTooltip(){
     if (!currentTooltip) return;
   
   const selection = window.getSelection();
@@ -164,7 +164,7 @@ export function positionInlineTooltip(){
   tooltip.style.zIndex = '10000';
 }
 
-export function setupInlineTooltipEventListeners(){
+function setupInlineTooltipEventListeners(){
     if (!currentTooltip) return;
   
   // Close button
@@ -180,7 +180,7 @@ export function setupInlineTooltipEventListeners(){
   }
 }
 
-export function showExplanationTooltip(originalText, explanation){
+function showExplanationTooltip(originalText, explanation){
     removeExistingTooltip();
   
   currentTooltip = createTooltip(`
@@ -216,7 +216,7 @@ export function showExplanationTooltip(originalText, explanation){
   positionTooltip();
 }
 
-export function showErrorTooltip(text, errorMessage){
+function showErrorTooltip(text, errorMessage){
     removeExistingTooltip();
   
   // Add helpful instructions for Chrome Built-in AI
@@ -259,7 +259,7 @@ export function showErrorTooltip(text, errorMessage){
   positionTooltip();
 }
 
-export function createTooltip(html){
+function createTooltip(html){
   const tooltip = document.createElement('div');
   tooltip.innerHTML = html;
   tooltip.className = 'helpmymom-tooltip-container';
@@ -267,7 +267,7 @@ export function createTooltip(html){
   return tooltip;
 }
 
-export function positionTooltip(){
+function positionTooltip(){
   if (!currentTooltip) return;
   
   const selection = window.getSelection();
@@ -300,7 +300,7 @@ export function positionTooltip(){
   tooltip.style.zIndex = '10000';
 }
 
-export function removeExistingTooltip(){
+function removeExistingTooltip(){
     if (currentTooltip) {
         currentTooltip.remove();
         currentTooltip = null;
@@ -308,7 +308,7 @@ export function removeExistingTooltip(){
 }
 
 // Setup event listeners for tooltip buttons
-export function setupTooltipEventListeners() {
+function setupTooltipEventListeners() {
     if (!currentTooltip) return;
     
     // Close button (X)

@@ -1,5 +1,9 @@
 // Background service worker for HelpMyMom extension
 
+// side panel opening logic
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ tabId: tab.id }); // delete tabId for a global side panel
+})
 // Create context menu for inline tooltips
 chrome.runtime.onInstalled.addListener(() => {
   console.log('HelpMyMom extension installed, creating context menu...');
