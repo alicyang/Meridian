@@ -1,4 +1,4 @@
-import * as smd from '../../smd.js';
+import * as smd from '../smd.js';
 
 const submitBtn = document.getElementById("submit-btn");
 const assistantResponseBox = document.getElementById("assistant-response-box");
@@ -6,17 +6,18 @@ const assistantLoader = document.getElementById("assistant-loader")
 const smartSearchDiv = document.getElementById("smart-search")
 const notAvailableDiv = document.getElementById("not-available")
 
-const searchSessionMap = new Map(); // {tab_url: {session}}
+const searchSessionCache = new Map(); // {tab_url: {session}}
 let currSearchSession = null;
 let currSearchSessionUrl = null;
-let languageModel = null;
+let searchModel = null;
+let relevanceModel = null;
 let modelIsBusy = false; 
 let contextIsReady = false; 
 
 start(); 
 async function start() {
-	// initialize session 
-	languageModel = await LanguageModel.create({
+	// initialize model 
+	searchModel = await LanguageModel.create({
 		monitor(m) {
 			m.addEventListener("downloadprogress", (e) => {
 				console.log(`Downloaded ${e.loaded * 100}%`);
@@ -34,8 +35,31 @@ async function start() {
 		expectedOutputs: [{ type: "text", languages: ["en"] }],
 	});
 
+	relevanceModel = await LanguageModel.create({
+		monitor(m) {
+			m.addEventListener("downloadprogress", (e) => {
+				console.log(`Downloaded ${e.loaded * 100}%`);
+			});
+		},
+		initialPrompts: [
+			{
+				role: "system",
+				content:
+					`You are given a webpage context containing a list of links and headers. Your task is to select the most relevant items for a user trying to understand or navigate the page.
+					For links, choose the top 200 that point to important sections, key content, or useful navigation.
+					Skip links that are decorative, repetitive, or purely metadata. Do NOT add any links that were not provided.
+					For headers, choose the top 200 that summarize main content or organize significant sections. Do NOT add any headers that were not provided.
+					Skip headers that provide the least amount of meaningful context.
+					Do not modify any link or header text. Only select a subset of the input provided. Do not add new text, explanations, or HTML. Return valid JSON only.`,
+			},
+		],
+		expectedInputs: [{ type: "text", languages: ["en"] }],
+		expectedOutputs: [{ type: "text", languages: ["en"] }],
+	})
+
 	// Set up the initial session 
 	chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+		contextIsReady = false;
 		if (tabs.length === 0) return;
 		const tab = tabs[0];
 		const isAccessible = await checkAccessPermissions(tab.url);
@@ -46,7 +70,7 @@ async function start() {
 			return;
 		} 
 		await addNewSearchSession(tab);
-		currSearchSession = searchSessionMap.get(tab.url);
+		currSearchSession = searchSessionCache.get(tab.url);
 		currSearchSessionUrl = tab.url;
 		contextIsReady = true;
 	});
@@ -64,14 +88,14 @@ async function start() {
 		notAvailableDiv.style.display = "none";
 		smartSearchDiv.style.display = "block"
 		
-		if (searchSessionMap.get(tab.url) == null) {
+		if (searchSessionCache.get(tab.url) == null) {
 			await addNewSearchSession(tab);
 		}
 		// update the current session to the new session 
 		while (modelIsBusy) {
 			await new Promise(resolve => setTimeout(resolve, 50));
 		}
-		currSearchSession = searchSessionMap.get(tab.url);
+		currSearchSession = searchSessionCache.get(tab.url);
 		currSearchSessionUrl = tab.url
 		contextIsReady = true; 
 	});
@@ -99,20 +123,21 @@ async function checkAccessPermissions(url) {
  * Handles the page change: recomb the page and clone a new session
  */
 async function addNewSearchSession(tab) {
-	if (searchSessionMap.has(tab.url)) {
+	if (searchSessionCache.has(tab.url)) {
 		return; // session in cache, no need to add a new one 
 	}
 	try {
+		console.log(`[INFO] Starting new search session for tab: ${tab.url}`);
 		const data = await combPage(tab);
-		const newSearchSession = await languageModel.clone();
+		const newSearchSession = await searchModel.clone();
 		await newSearchSession.append([
 			{ role: "system", content: JSON.stringify(data) }
 		]);
-		searchSessionMap.set(tab.url, newSearchSession);
-		if (searchSessionMap.size > 10) {
-			for (const [key] of searchSessionMap) {
+		searchSessionCache.set(tab.url, newSearchSession);
+		if (searchSessionCache.size > 10) {
+			for (const [key] of searchSessionCache) {
 				if (key !== currSearchSessionUrl) {
-					searchSessionMap.delete(key);
+					searchSessionCache.delete(key);
 					break;
 				}
 			}
@@ -141,19 +166,76 @@ async function combPage(tab) {
 					text: h.innerText.trim(),
 					top: h.getBoundingClientRect().top + window.scrollY,
 				}));
-
 				return { links, headers };
 			},
 		});
 
 		// Extract result from the injected script response
-		const [result] = injectionResults;
-		return result.result;
+		const result = injectionResults[0].result;
+		console.log(`[INFO] Combed page: found ${result.links.length} links and ${result.headers.length} headers`); // <-- LOG 2
+		console.log(result)
+		if (result.links.length + result.headers.length >= 100) {
+			return await filterPageFeatures(result);
+		}
+		return { links: result.links, headers: result.headers };
 	} catch (err) {
 		console.error("Failed to comb page:", err);
 		throw err;
 	}
 }
+
+async function filterPageFeatures(data) {
+	const schema = {
+		"type": "object",
+		"properties": {
+			"links": {
+				"type": "array",
+				"maxItems": 200,
+				"items": {
+					"type": "object",
+					"properties": {
+						"text": { "type": "string"},
+						"href": { "type": "string"}
+					}
+				},
+				"required": ["text", "href"],
+				"additionalProperties": false
+			},
+			"headers": {
+				"type": "array",
+				"maxItems": 200,
+				"items": {
+					"type": "object",
+					"properties": {
+						"level": { "type": "string" },
+						"text": { "type": "string" },
+						"top": { "type": "integer"}
+					},
+					"required": ["level", "text", "top"],
+					"additionalProperties": false
+				}
+			}
+		},
+		"required": ["links", "headers"],
+		"additionalProperties": false
+	}
+	const relevanceSession = await relevanceModel.clone(); 
+	const res = await relevanceSession.prompt(
+		`${JSON.stringify(data)}`,
+		{responseConstraint: schema}
+	) 
+
+	let parsed;
+	try {
+		parsed = typeof res === "string" ? JSON.parse(res) : res;
+	} catch (err) {
+		console.error("Failed to parse model output JSON:", err);
+		parsed = { links: [], headers: [] };
+	}
+	console.log(`[INFO] Filtered page features (JS object):`, parsed);
+	return parsed;
+}
+
 
 /**
  * On click handler for button which submits user's question to model 
