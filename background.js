@@ -8,23 +8,6 @@ chrome.action.onClicked.addListener((tab) => {
   
 })
 
-// --- Intercept PDF navigation and redirect to custom viewer ---
-chrome.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    // Only intercept top-level navigations (main_frame)
-    if (sidePanelOpen && details.type === "main_frame" && details.url.endsWith(".pdf")) {
-      console.log("Intercepted PDF request:", details.url);
-
-      // Redirect to your internal viewer page with the encoded URL
-      const viewerUrl = chrome.runtime.getURL("PDF_VIEWER/viewer.html");
-      const redirectUrl = `${viewerUrl}?file=${encodeURIComponent(details.url)}`;
-      return { redirectUrl };
-    }
-  },
-  { urls: ["<all_urls>"], types: ["main_frame"] },
-  ["blocking"]
-);
-
 
 
 // Create context menu for inline tooltips
@@ -340,6 +323,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // If we didn't handle it, return false (or let other listeners handle)
+});
+
+// Message handler to open PDF in viewer with redirect
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message.action === "openPdfViewer" && message.pdfUrl) {
+    const viewerUrl = chrome.runtime.getURL("PDF_VIEWER/viewer.html");
+    const fullUrl = `${viewerUrl}?file=${encodeURIComponent(message.pdfUrl)}`;
+
+    if (sender.tab && sender.tab.id) {
+      // Navigate the same tab (replaces current page)
+      chrome.tabs.update(sender.tab.id, { url: fullUrl });
+    } else {
+      // Or open in a new tab if needed
+      chrome.tabs.create({ url: fullUrl });
+    }
+  }
 });
 
 // Handle explain text requests from content script

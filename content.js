@@ -57,9 +57,10 @@ async function isSidePanelOpen() {
 
 // Open PDF in the custom viewer
 function openPDFInViewer(pdfUrl) {
-  const viewerUrl = chrome.runtime.getURL('PDF_VIEWER/viewer.html');
-  const fullUrl = `${viewerUrl}?file=${pdfUrl}`;
-  window.open(fullUrl, '_blank');
+  chrome.runtime.sendMessage({
+    action: "openPdfViewer",
+    pdfUrl
+  });
 }
 
 // Intercept default PDF function when side panel open

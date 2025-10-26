@@ -10,9 +10,7 @@
     "storage",
     "scripting",
     "sidePanel",
-    "tabs",
-    "webRequest",
-    "webRequestBlocking"
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"

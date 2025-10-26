@@ -1,7 +1,6 @@
 import * as pdfjsLib from './pdf.min.mjs';
 // Import the official PDF viewer components (handles text layer + rendering)
 import { EventBus, PDFPageView } from '../node_modules/pdfjs-dist/web/pdf_viewer.mjs';
-import { showInlineExplanationTooltip } from '../shared/tooltip.js';
 
 // Chrome extensions cannot load remote files directly,
 // so use chrome.runtime.getURL() to point to our local worker file.
@@ -145,7 +144,7 @@ function updatePageInfo() {
   chrome.runtime.onMessage.addListener((request) => {
     if (request.action === 'showExplanation') {
       console.log('Received explanation:', request.explanation);
-      showInlineExplanationTooltip(request.text, request.explanation);
+      window.showInlineExplanationTooltip(request.text, request.explanation);
     }
   });
 

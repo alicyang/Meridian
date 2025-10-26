@@ -16,25 +16,6 @@ function formatTextForTooltip(text){
     .replace(/\n/g, '<br>');      // single line breaks
 }
 
-function showLoadingTooltip(text){
-    selectedText = text;
-    removeExistingTooltip();
-    
-    currentTooltip = createTooltip(`
-        <div class="meridian-tooltip loading">
-        <div class="tooltip-header">
-            <span class="tooltip-title">Explaining...</span>
-        </div>
-        <div class="tooltip-content">
-            <div class="loading-spinner"></div>
-            <p>AI is analyzing your text...</p>
-        </div>
-        </div>
-  `);
-  
-  positionTooltip();
-}
-
 function showInlineLoadingTooltip(text){
    selectedText = text;
   removeExistingTooltip();
@@ -54,7 +35,7 @@ function showInlineLoadingTooltip(text){
   
 }
 
-export function showInlineExplanationTooltip(originalText, explanation){
+function showInlineExplanationTooltip(originalText, explanation){
     removeExistingTooltip();
   
   currentTooltip = createInlineTooltip(`
@@ -349,3 +330,9 @@ function setupTooltipEventListeners() {
       });
     }
   }
+
+// Adding this caveat to deal with module env of PDF viewer and non-module environment of web
+if (typeof window !== "undefined") {
+  window.showInlineExplanationTooltip = showInlineExplanationTooltip;
+  window.showInlineLoadingTooltip = showInlineLoadingTooltip;
+}
