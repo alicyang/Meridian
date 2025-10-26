@@ -1,13 +1,16 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Chrome For Everyone</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meridian</title>
     <link rel="stylesheet" href="panel.css">
 </head>
 
 <body>
     <div id="extension-panel">
+        <h1>Meridian</h1>
+        <p>Explore the Internet with the help of AI</p>
 
         <!-- smart search ui -->
         <div id="smart-search">
@@ -30,7 +33,27 @@
         <div id="not-available">
             <p>Smart Search is not available on this page</p>
         </div>
+
+        <!-- explain in context settings -->
+        <label for="targetLanguage">Select Language</label>
+        <select id="targetLanguage">
+            <option value="en">English (Default)</option>
+            <option value="es">Spanish</option>
+            <option value="ja">Japanese</option>
+        </select>
+        
+        <button id="explainSelected">Explain Selected Text</button>
+        <div id="aiStatus" style="margin-top: 10px; font-size: 12px; text-align: center; color: #666;"></div>
+        <small>Select text on any site and right-click to explain it!</small>
+        
+        <br></br>
+        
+        <label>
+            <input type="checkbox" id="analyzePDFs" checked>
+            Read PDFs in extension viewer
+        </label>
     </div>
-    <script type="module" src="panel-with-embeddings.js"></script>
+    <script type="module" src="panel.js"></script>
 </body>
+
 </html>

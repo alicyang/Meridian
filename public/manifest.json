@@ -1,5 +1,5 @@
 {
-    "name": "Chrome For Everyone",
+    "name": "Meridian",
     "description": "Confidently navigate the web in any language.",
     "version": "1.0",
     "manifest_version": 3,
@@ -8,7 +8,9 @@
         "activeTab",
         "scripting",
         "sidePanel", 
-        "notifications"
+        "notifications",
+        "contextMenus",
+        "storage"
     ],
     "background": {
         "service_worker": "background.js",
@@ -16,12 +18,12 @@
     },
     "content_scripts": [{
         "matches": ["<all_urls>"],
-        "js": ["content.js"],
-        "css": ["widget.css"],
+        "js": ["content.js", "./shared/tooltip.js"],
+        "css": ["content.css"],
         "run_at": "document_end"
     }],
     "action": {
-        "default_title": "Smart Search"
+        "default_title": "Meridian: Navigate the Internet, Explore the World"
     },
     "side_panel": {
         "default_path": "src/panel/panel.html"
@@ -29,6 +31,14 @@
     "web_accessible_resources": [
         {
             "resources": ["smd.js"],
+            "matches": ["<all_urls>"]
+        },
+        {
+            "resources": ["PDF-VIEWER/*"],
+            "matches": ["<all_urls>"]
+        },
+        {
+            "resources": ["shared/*"],
             "matches": ["<all_urls>"]
         }
     ],

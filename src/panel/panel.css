@@ -55,3 +55,65 @@
 #not-available {
     display: none;
 }
+
+/* --- Earthy Color Palette --- */
+:root {
+    --brown: #5c4033;
+    --ocean: #2f3cb5a5;
+    --cream: #f8f5ee;
+    --olive: #6b705c;
+    --clay: #a27b5c;
+}
+
+body {
+    width: 320px;
+    min-height: 400px;
+    font-family: system-ui, sans-serif;
+    color: var(--cream);
+    background: var(--ocean);
+    padding: 20px;
+}
+
+h1 {
+    font-size: 22px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+p {
+    text-align: center;
+    font-size: 13px;
+    opacity: 0.9;
+    margin-bottom: 24px;
+}
+
+label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--clay);
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--cream);
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+select option {
+    background: var(--brown);
+    color: var(--cream);
+}
+
+small {
+    display: block;
+    text-align: center;
+    margin-top: 16px;
+    font-size: 12px;
+    opacity: 0.8;
+}
