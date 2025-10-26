@@ -69,9 +69,8 @@ document.addEventListener('click', async (event) => {
   const link = target.closest('a');
 
   if (link && link.href) {
-    const isOpen = await isSidePanelOpen();
-
-    if (isOpen && link.href.toLowerCase().endsWith('.pdf')) {
+    const result = await chrome.storage.sync.get(['analyzePDFs']);
+    if (result.analyzePDFs && link.href.toLowerCase().endsWith('.pdf')) {
       event.preventDefault();
       event.stopPropagation();
       openPDFInViewer(link.href);
