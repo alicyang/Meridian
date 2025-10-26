@@ -1,7 +1,7 @@
 import * as pdfjsLib from './pdf.min.mjs';
 // Import the official PDF viewer components (handles text layer + rendering)
 import { EventBus, PDFPageView } from '../node_modules/pdfjs-dist/web/pdf_viewer.mjs';
-import { showInlineExplanationTooltip, showInlineLoadingTooltip, showInlineErrorTooltip } from '../shared/tooltip.js';
+import { showInlineExplanationTooltip } from '../shared/tooltip.js';
 
 // Chrome extensions cannot load remote files directly,
 // so use chrome.runtime.getURL() to point to our local worker file.

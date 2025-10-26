@@ -54,7 +54,7 @@ function showInlineLoadingTooltip(text){
   
 }
 
-function showInlineExplanationTooltip(originalText, explanation){
+export function showInlineExplanationTooltip(originalText, explanation){
     removeExistingTooltip();
   
   currentTooltip = createInlineTooltip(`
@@ -349,9 +349,3 @@ function setupTooltipEventListeners() {
       });
     }
   }
-
-  export { 
-    showInlineExplanationTooltip, 
-    showInlineLoadingTooltip, 
-    showInlineErrorTooltip 
-  };

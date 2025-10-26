@@ -156,10 +156,8 @@ async function saveSetting(key, value) {
 window.addEventListener('beforeunload', () => {
   // Save any pending changes
   const targetLanguage = document.getElementById('targetLanguage').value;
-  const preferredAI = document.getElementById('localAI').classList.contains('active') ? 'local' : 'remote';
   
   chrome.storage.sync.set({
     targetLanguage: targetLanguage,
-    preferredAI: preferredAI
   });
 });

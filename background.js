@@ -7,6 +7,26 @@ chrome.action.onClicked.addListener((tab) => {
   sidePanelOpen = true;
   
 })
+
+// --- Intercept PDF navigation and redirect to custom viewer ---
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    // Only intercept top-level navigations (main_frame)
+    if (sidePanelOpen && details.type === "main_frame" && details.url.endsWith(".pdf")) {
+      console.log("Intercepted PDF request:", details.url);
+
+      // Redirect to your internal viewer page with the encoded URL
+      const viewerUrl = chrome.runtime.getURL("PDF_VIEWER/viewer.html");
+      const redirectUrl = `${viewerUrl}?file=${encodeURIComponent(details.url)}`;
+      return { redirectUrl };
+    }
+  },
+  { urls: ["<all_urls>"], types: ["main_frame"] },
+  ["blocking"]
+);
+
+
+
 // Create context menu for inline tooltips
 chrome.runtime.onInstalled.addListener(() => {
   console.log('HelpMyMom extension installed, creating context menu...');
