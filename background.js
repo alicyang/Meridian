@@ -1,8 +1,11 @@
 // Background service worker for HelpMyMom extension
+let sidePanelOpen = false;
 
 // side panel opening logic
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ tabId: tab.id }); // delete tabId for a global side panel
+  sidePanelOpen = true;
+  
 })
 // Create context menu for inline tooltips
 chrome.runtime.onInstalled.addListener(() => {
@@ -311,6 +314,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === 'isSidePanelOpen') {
+    sendResponse({ isOpen: sidePanelOpen });
+    return true;
+  }
+
   // If we didn't handle it, return false (or let other listeners handle)
 });
 
@@ -325,12 +333,6 @@ async function handleExplainTextRequest(request, sender, sendResponse) {
   }
 
   try {
-    // Show loading state in content script
-    chrome.tabs.sendMessage(sender.tab.id, {
-      action: "showLoading",
-      text: text
-    });
-
     // Try Chrome Built-in AI first (Gemini Nano)
     let explanation;
     try {
@@ -355,22 +357,7 @@ async function handleExplainTextRequest(request, sender, sendResponse) {
       throw new Error(`Chrome Built-in AI is not available. ${localError.message}`);
     }
 
-    // Send explanation to content script
-    chrome.tabs.sendMessage(sender.tab.id, {
-      action: "showExplanation",
-      text: text,
-      explanation: explanation
-    });
-
-    sendResponse({ success: true });
-
   } catch (error) {
     console.error('Error explaining text:', error);
-    chrome.tabs.sendMessage(sender.tab.id, {
-      action: "showError",
-      text: text,
-      error: error.message
-    });
-    sendResponse({ success: false, error: error.message });
   }
 }

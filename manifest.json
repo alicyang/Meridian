@@ -9,7 +9,8 @@
     "contextMenus",
     "storage",
     "scripting",
-    "sidePanel"
+    "sidePanel",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -41,7 +42,7 @@
   ],
     "web_accessible_resources": [
       {
-        "resources": ["pdf-viewer/*"],
+        "resources": ["PDF-VIEWER/*"],
         "matches": ["<all_urls>"]
       },
       {

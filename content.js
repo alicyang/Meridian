@@ -16,18 +16,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Sender:', sender);
   
   switch (request.action) {
-    case 'showLoading':
-      console.log('Showing loading tooltip for:', request.text);
-      showLoadingTooltip(request.text);
-      break;
-    case 'showExplanation':
-      console.log('Showing explanation tooltip for:', request.text);
-      showExplanationTooltip(request.text, request.explanation);
-      break;
-    case 'showError':
-      console.log('Showing error tooltip for:', request.text);
-      showErrorTooltip(request.text, request.error);
-      break;
     case 'showInlineExplanation':
       console.log('Showing inline explanation for:', request.text);
       handleInlineExplanation(request.text);
@@ -56,6 +44,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
   }
 });
+
+async function isSidePanelOpen() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'isSidePanelOpen'});
+    return response.isOpen;
+  } catch (error) {
+    console.error('Error checking side panel status:', error);
+    return false;
+  }
+}
+
+// Open PDF in the custom viewer
+function openPDFInViewer(pdfUrl) {
+  const viewerUrl = chrome.runtime.getURL('PDF_VIEWER/viewer.html');
+  const fullUrl = `${viewerUrl}?file=${encodeURIComponent(pdfUrl)}`;
+  window.open(fullUrl, '_blank');
+}
+
+// Intercept default PDF function when side panel open
+document.addEventListener('click', async (event) => {
+  const target = event.target;
+  const link = target.closest('a');
+
+  if (link && link.href) {
+    const isOpen = await isSidePanelOpen();
+
+    if (isOpen && link.href.toLowerCase().endsWith('.pdf')) {
+      event.preventDefault();
+      event.stopPropagation();
+      openPDFInViewer(link.href);
+    }
+  }
+})
 
 async function handleInlineExplanation(text) {
   try {

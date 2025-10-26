@@ -15,7 +15,8 @@ async function loadSettings() {
     const result = await chrome.storage.sync.get([
       'targetLanguage',
       'preferredAI',
-      'textsExplained'
+      'textsExplained',
+      'analyzePDFs'
     ]);
     
     // Set target language
@@ -23,12 +24,11 @@ async function loadSettings() {
     if (targetLanguageSelect) {
       targetLanguageSelect.value = result.targetLanguage || 'en';
     }
-    
-    // Set AI preference
-    const localAIToggle = document.getElementById('localAI');
-    if (localAIToggle) {
-      const isLocal = result.preferredAI !== 'remote';
-      localAIToggle.classList.toggle('active', isLocal);
+
+    // Set PDF analysis toggle
+    const analyzePDFsCheckbox = document.getElementById('analyzePDFs');
+    if (analyzePDFsCheckbox) {
+      analyzePDFsCheckbox.checked = result.analyzePDFs !== false; // default to true
     }
     
   } catch (error) {
@@ -45,14 +45,12 @@ function setupEventListeners() {
       await saveSetting('targetLanguage', e.target.value);
     });
   }
-  
-  // Local AI toggle
-  const localAIToggle = document.getElementById('localAI');
-  if (localAIToggle) {
-    localAIToggle.addEventListener('click', async () => {
-      const isActive = localAIToggle.classList.contains('active');
-      localAIToggle.classList.toggle('active', !isActive);
-      await saveSetting('preferredAI', isActive ? 'remote' : 'local');
+
+  // PDF analysis toggle
+  const analyzePDFsCheckbox = document.getElementById('analyzePDFs');
+  if (analyzePDFsCheckbox) {
+    analyzePDFsCheckbox.addEventListener('change', async (e) => {
+      await saveSetting('analyzePDFs', e.target.checked);
     });
   }
 
