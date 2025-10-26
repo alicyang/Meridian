@@ -16,26 +16,7 @@ function formatTextForTooltip(text) {
         .replace(/\n/g, '<br>');      // single line breaks
 }
 
-function showLoadingTooltip(text) {
-    selectedText = text;
-    removeExistingTooltip();
-
-    currentTooltip = createTooltip(`
-        <div class="meridian-tooltip loading">
-        <div class="tooltip-header">
-            <span class="tooltip-title">Explaining...</span>
-        </div>
-        <div class="tooltip-content">
-            <div class="loading-spinner"></div>
-            <p>AI is analyzing your text...</p>
-        </div>
-        </div>
-  `);
-
-    positionTooltip();
-}
-
-function showInlineLoadingTooltip(text) {
+export function showInlineLoadingTooltip(text) {
     selectedText = text;
     removeExistingTooltip();
 
@@ -83,7 +64,7 @@ function showInlineExplanationTooltip(originalText, explanation) {
     positionInlineTooltip();
 }
 
-function showInlineErrorTooltip(text, errorMessage) {
+export function showInlineErrorTooltip(text, errorMessage) {
     removeExistingTooltip();
 
     currentTooltip = createInlineTooltip(`
@@ -349,9 +330,3 @@ function setupTooltipEventListeners() {
         });
     }
 }
-
-export {
-    showInlineExplanationTooltip,
-    showInlineLoadingTooltip,
-    showInlineErrorTooltip
-};
