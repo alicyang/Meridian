@@ -1,7 +1,7 @@
-/* HelpMyMom Extension - Content Script Styles */
+/* Meridian Extension - Content Script Styles */
 
 /* Inline Tooltip Styles */
-.helpmymom-inline-tooltip-container {
+.meridian-inline-tooltip-container {
   position: fixed;
   z-index: 10000;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -11,7 +11,7 @@
   animation: fadeIn 0.3s ease-out;
 }
 
-.helpmymom-inline-tooltip {
+.meridian-inline-tooltip {
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #e1e5e9;
   border-radius: 12px;
@@ -21,7 +21,7 @@
   position: relative;
 }
 
-.helpmymom-inline-tooltip::before {
+.meridian-inline-tooltip::before {
   content: '';
   position: absolute;
   top: -8px;
@@ -132,11 +132,11 @@
 }
 
 /* Loading state for inline tooltips */
-.helpmymom-inline-tooltip.loading .inline-tooltip-content {
+.meridian-inline-tooltip.loading .inline-tooltip-content {
   text-align: center;
 }
 
-.helpmymom-inline-tooltip.loading .loading-spinner {
+.meridian-inline-tooltip.loading .loading-spinner {
   width: 24px;
   height: 24px;
   border: 3px solid #f3f3f3;
@@ -147,11 +147,11 @@
 }
 
 /* Error state for inline tooltips */
-.helpmymom-inline-tooltip.error .inline-tooltip-header {
+.meridian-inline-tooltip.error .inline-tooltip-header {
   background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
 }
 
-.helpmymom-inline-tooltip.error .help-section {
+.meridian-inline-tooltip.error .help-section {
   margin-top: 16px;
   padding: 12px;
   background: rgba(255, 107, 107, 0.1);
@@ -159,26 +159,26 @@
   border-left: 4px solid #ff6b6b;
 }
 
-.helpmymom-inline-tooltip.error .help-section strong {
+.meridian-inline-tooltip.error .help-section strong {
   color: #ff6b6b;
   font-size: 13px;
   display: block;
   margin-bottom: 8px;
 }
 
-.helpmymom-inline-tooltip.error .help-section ol {
+.meridian-inline-tooltip.error .help-section ol {
   margin: 0;
   padding-left: 20px;
   font-size: 12px;
   line-height: 1.5;
 }
 
-.helpmymom-inline-tooltip.error .help-section li {
+.meridian-inline-tooltip.error .help-section li {
   margin-bottom: 4px;
 }
 
 /* Original Tooltip Styles (for popup-based explanations) */
-.helpmymom-tooltip-container {
+.meridian-tooltip-container {
   position: fixed;
   z-index: 10000;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -188,7 +188,7 @@
   animation: fadeIn 0.3s ease-out;
 }
 
-.helpmymom-tooltip {
+.meridian-tooltip {
   background: #ffffff;
   border: 1px solid #e1e5e9;
   border-radius: 12px;
@@ -241,7 +241,7 @@
 }
 
 /* Loading state */
-.helpmymom-tooltip.loading .tooltip-content {
+.meridian-tooltip.loading .tooltip-content {
   text-align: center;
 }
 
@@ -340,15 +340,15 @@
 }
 
 /* Error state */
-.helpmymom-tooltip.error .tooltip-header {
+.meridian-tooltip.error .tooltip-header {
   background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
 }
 
-.helpmymom-tooltip.error .tooltip-content {
+.meridian-tooltip.error .tooltip-content {
   text-align: center;
 }
 
-.helpmymom-tooltip.error .tooltip-content p {
+.meridian-tooltip.error .tooltip-content p {
   color: #dc3545;
   margin: 0;
 }
@@ -367,7 +367,7 @@
 
 /* Responsive design */
 @media (max-width: 480px) {
-  .helpmymom-tooltip-container {
+  .meridian-tooltip-container {
     max-width: calc(100vw - 20px);
     left: 10px !important;
     right: 10px !important;
@@ -419,7 +419,7 @@
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  .helpmymom-tooltip {
+  .meridian-tooltip {
     background: #2d3748;
     border-color: #4a5568;
     color: #e2e8f0;

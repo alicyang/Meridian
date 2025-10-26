@@ -21,7 +21,7 @@ function showLoadingTooltip(text){
     removeExistingTooltip();
     
     currentTooltip = createTooltip(`
-        <div class="helpmymom-tooltip loading">
+        <div class="meridian-tooltip loading">
         <div class="tooltip-header">
             <span class="tooltip-title">Explaining...</span>
         </div>
@@ -40,9 +40,9 @@ function showInlineLoadingTooltip(text){
   removeExistingTooltip();
   
   currentTooltip = createInlineTooltip(`
-    <div class="helpmymom-inline-tooltip loading">
+    <div class="meridian-inline-tooltip loading">
       <div class="inline-tooltip-header">
-        <div class="inline-tooltip-title">HelpMyMom</div>
+        <div class="inline-tooltip-title">Meridian</div>
         <div class="inline-tooltip-subtitle">AI Assistant</div>
       </div>
       <div class="inline-tooltip-content">
@@ -58,7 +58,7 @@ function showInlineExplanationTooltip(originalText, explanation){
     removeExistingTooltip();
   
   currentTooltip = createInlineTooltip(`
-    <div class="helpmymom-inline-tooltip explanation">
+    <div class="meridian-inline-tooltip explanation">
       <div class="inline-tooltip-header">
         <div class="inline-tooltip-title">Explanation</div>
         <div class="inline-tooltip-subtitle">Meridian</div>
@@ -87,10 +87,10 @@ function showInlineErrorTooltip(text, errorMessage){
     removeExistingTooltip();
   
   currentTooltip = createInlineTooltip(`
-    <div class="helpmymom-inline-tooltip error">
+    <div class="meridian-inline-tooltip error">
       <div class="inline-tooltip-header">
         <div class="inline-tooltip-title">Error</div>
-        <div class="inline-tooltip-subtitle">HelpMyMom AI</div>
+        <div class="inline-tooltip-subtitle">Meridian AI</div>
       </div>
       <div class="inline-tooltip-content">
         <p>${errorMessage}</p>
@@ -116,7 +116,7 @@ function showInlineErrorTooltip(text, errorMessage){
 function createInlineTooltip(html){
     const tooltip = document.createElement('div');
     tooltip.innerHTML = html;
-    tooltip.className = 'helpmymom-inline-tooltip-container';
+    tooltip.className = 'meridian-inline-tooltip-container';
     document.body.appendChild(tooltip);
     return tooltip;
 }
@@ -136,7 +136,7 @@ function positionInlineTooltip(){
     return;
   }
   
-  const tooltip = currentTooltip.querySelector('.helpmymom-inline-tooltip');
+  const tooltip = currentTooltip.querySelector('.meridian-inline-tooltip');
   if (!tooltip) {
     console.warn("Tooltip element not found — skipping position update.");
     return; // stop here safely
@@ -184,7 +184,7 @@ function showExplanationTooltip(originalText, explanation){
     removeExistingTooltip();
   
   currentTooltip = createTooltip(`
-    <div class="helpmymom-tooltip explanation">
+    <div class="meridian-tooltip explanation">
       <div class="tooltip-header">
         <span class="tooltip-title">Explanation</span>
         <button class="close-btn" id="close-btn">×</button>
@@ -236,7 +236,7 @@ function showErrorTooltip(text, errorMessage){
   }
   
   currentTooltip = createTooltip(`
-    <div class="helpmymom-tooltip error">
+    <div class="meridian-tooltip error">
       <div class="tooltip-header">
         <span class="tooltip-title">Error</span>
         <button class="close-btn" id="close-btn">×</button>
@@ -262,7 +262,7 @@ function showErrorTooltip(text, errorMessage){
 function createTooltip(html){
   const tooltip = document.createElement('div');
   tooltip.innerHTML = html;
-  tooltip.className = 'helpmymom-tooltip-container';
+  tooltip.className = 'meridian-tooltip-container';
   document.body.appendChild(tooltip);
   return tooltip;
 }
@@ -276,7 +276,7 @@ function positionTooltip(){
   const range = selection.getRangeAt(0);
   const rect = range.getBoundingClientRect();
   
-  const tooltip = currentTooltip.querySelector('.helpmymom-tooltip');
+  const tooltip = currentTooltip.querySelector('.meridian-tooltip');
   const tooltipRect = tooltip.getBoundingClientRect();
   
   // Position tooltip above selection, centered
@@ -349,3 +349,9 @@ function setupTooltipEventListeners() {
       });
     }
   }
+
+  export { 
+    showInlineExplanationTooltip, 
+    showInlineLoadingTooltip, 
+    showInlineErrorTooltip 
+  };

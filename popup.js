@@ -1,4 +1,4 @@
-// Popup script for HelpMyMom extension
+// Popup script for Meridian extension
 // Handles settings, statistics, and user preferences
 
 document.addEventListener('DOMContentLoaded', async () => {

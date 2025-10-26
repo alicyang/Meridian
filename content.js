@@ -1,6 +1,6 @@
-// Content script for HelpMyMom extension
+// Content script for Meridian extension
 
-console.log('HelpMyMom content script loaded!');
+console.log('Meridian content script loaded!');
 
 document.addEventListener('mouseup', () => {
   const selection = window.getSelection();
@@ -58,7 +58,7 @@ async function isSidePanelOpen() {
 // Open PDF in the custom viewer
 function openPDFInViewer(pdfUrl) {
   const viewerUrl = chrome.runtime.getURL('PDF_VIEWER/viewer.html');
-  const fullUrl = `${viewerUrl}?file=${encodeURIComponent(pdfUrl)}`;
+  const fullUrl = `${viewerUrl}?file=${pdfUrl}`;
   window.open(fullUrl, '_blank');
 }
 

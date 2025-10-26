@@ -1,4 +1,4 @@
-/* HelpMyMom - Simplified Tooltip Styles (Earthy Edition) */
+/* Meridian - Tooltip Styles (Earthy Edition) */
 
 :root {
   --earth-bg: #f5f0e6;      /* soft beige background */
@@ -9,8 +9,8 @@
 }
 
 /* Tooltip container */
-.helpmymom-tooltip-container,
-.helpmymom-inline-tooltip-container {
+.meridian-tooltip-container,
+.meridian-inline-tooltip-container {
   position: fixed;
   z-index: 10000;
   font-family: system-ui, sans-serif;
@@ -21,8 +21,8 @@
 }
 
 /* Tooltip base */
-.helpmymom-tooltip,
-.helpmymom-inline-tooltip {
+.meridian-tooltip,
+.meridian-inline-tooltip {
   background: var(--earth-bg);
   color: var(--earth-text);
   border: 1px solid var(--earth-border);
