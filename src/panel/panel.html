@@ -8,11 +8,14 @@
 
 <body>
     <div id="extension-panel">
+
+        <!-- smart search ui -->
         <div id="smart-search">
             <h1>Smart Search</h1>
+            <!-- input box for user's question -->
             <textarea id='user-input' placeholder="What would you like to search for?"></textarea>
             <button id="submit-btn" type="submit">Search</button>
-            
+            <!-- output box for language model -->
             <div id="language-model-box">
                 <div class="loader-container">
                     <div class="loader" id="assistant-loader"></div>
@@ -22,10 +25,12 @@
                 </div>
             </div>
         </div>
+
+        <!-- displayed on pages that are not accessible -->
         <div id="not-available">
             <p>Smart Search is not available on this page</p>
         </div>
     </div>
-    <script type="module" src="panel_with_embeddings.js"></script>
+    <script type="module" src="panel-with-embeddings.js"></script>
 </body>
 </html>

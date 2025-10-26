@@ -11,8 +11,15 @@
         "notifications"
     ],
     "background": {
-        "service_worker": "src/background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
+    "content_scripts": [{
+        "matches": ["<all_urls>"],
+        "js": ["content.js"],
+        "css": ["widget.css"],
+        "run_at": "document_end"
+    }],
     "action": {
         "default_title": "Smart Search"
     },

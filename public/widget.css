@@ -1,0 +1,37 @@
+#search-widget {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#widget-search-button {
+  transition: transform 0.2s ease;
+}
+
+#widget-search-button:hover {
+  transform: scale(1.1);
+}
+
+#widget-panel {
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+#widget-input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+#widget-prev, #widget-next, #widget-panel-close {
+  padding: 6px 12px;
+  margin: 2px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f8f9fa;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#widget-prev:hover, #widget-next:hover, #widget-panel-close:hover {
+  background: #e9ecef;
+}
