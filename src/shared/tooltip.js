@@ -16,7 +16,7 @@ function formatTextForTooltip(text) {
         .replace(/\n/g, '<br>');      // single line breaks
 }
 
-export function showInlineLoadingTooltip(text) {
+function showInlineLoadingTooltip(text) {
     selectedText = text;
     removeExistingTooltip();
 
@@ -64,7 +64,7 @@ function showInlineExplanationTooltip(originalText, explanation) {
     positionInlineTooltip();
 }
 
-export function showInlineErrorTooltip(text, errorMessage) {
+function showInlineErrorTooltip(text, errorMessage) {
     removeExistingTooltip();
 
     currentTooltip = createInlineTooltip(`
@@ -94,6 +94,37 @@ export function showInlineErrorTooltip(text, errorMessage) {
     positionInlineTooltip();
 }
 
+
+function showInlineErrorTooltip(text, errorMessage){
+  removeExistingTooltip();
+
+currentTooltip = createInlineTooltip(`
+  <div class="meridian-inline-tooltip error">
+    <div class="inline-tooltip-header">
+      <div class="inline-tooltip-title">Error</div>
+      <div class="inline-tooltip-subtitle">Meridian AI</div>
+    </div>
+    <div class="inline-tooltip-content">
+      <p>${errorMessage}</p>
+      <div class="help-section">
+        <strong>Try this instead:</strong>
+        <ol>
+          <li>Use the extension popup to download the AI model first</li>
+          <li>Make sure you have Chrome 126+ with AI features enabled</li>
+          <li>Try again after the model is downloaded</li>
+        </ol>
+      </div>
+    </div>
+    <div class="inline-tooltip-footer">
+      <button class="inline-close-btn" id="inline-close-btn">×</button>
+    </div>
+  </div>
+`);
+
+setupInlineTooltipEventListeners();
+positionInlineTooltip();
+}
+
 function createInlineTooltip(html) {
     const tooltip = document.createElement('div');
     tooltip.innerHTML = html;
@@ -120,7 +151,7 @@ function positionInlineTooltip() {
     const tooltip = currentTooltip.querySelector('.meridian-inline-tooltip');
     if (!tooltip) {
         console.warn("Tooltip element not found — skipping position update.");
-        return; // stop here safely
+        return;
     }
     const tooltipRect = tooltip.getBoundingClientRect();
 
@@ -130,7 +161,7 @@ function positionInlineTooltip() {
 
     // Adjust if tooltip goes off screen
     if (top < 10) {
-        top = rect.bottom + 15; // Show below instead
+        top = rect.bottom + 15;
     }
 
     if (left < 10) {
@@ -185,49 +216,6 @@ function showExplanationTooltip(originalText, explanation) {
           </button>
           <button class="action-btn secondary" id="close-tooltip-btn">
             Close
-          </button>
-        </div>
-      </div>
-    </div>
-  `);
-
-    // Add event listeners for buttons
-    setupTooltipEventListeners();
-
-    positionTooltip();
-}
-
-function showErrorTooltip(text, errorMessage) {
-    removeExistingTooltip();
-
-    // Add helpful instructions for Chrome Built-in AI
-    let helpText = '';
-    if (errorMessage.includes('Chrome Built-in AI is not available')) {
-        helpText = `
-      <div class="help-section">
-        <strong>How to enable Chrome Built-in AI:</strong>
-        <ol>
-          <li>Update Chrome to version 126 or later</li>
-          <li>Go to <code>chrome://flags/</code></li>
-          <li>Search for "AI" and enable AI features</li>
-          <li>Restart Chrome and try again</li>
-        </ol>
-      </div>
-    `;
-    }
-
-    currentTooltip = createTooltip(`
-    <div class="meridian-tooltip error">
-      <div class="tooltip-header">
-        <span class="tooltip-title">Error</span>
-        <button class="close-btn" id="close-btn">×</button>
-      </div>
-      <div class="tooltip-content">
-        <p>${errorMessage}</p>
-        ${helpText}
-        <div class="tooltip-actions">
-          <button class="action-btn" id="try-again-btn">
-            Try again
           </button>
         </div>
       </div>
@@ -329,4 +317,10 @@ function setupTooltipEventListeners() {
             }
         });
     }
+}
+
+// Adding this caveat to deal with module env of PDF viewer and non-module environment of web
+if (typeof window !== "undefined") {
+  window.showInlineExplanationTooltip = showInlineExplanationTooltip;
+  window.showInlineLoadingTooltip = showInlineLoadingTooltip;
 }

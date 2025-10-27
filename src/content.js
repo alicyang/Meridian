@@ -247,21 +247,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-async function isSidePanelOpen() {
-    try {
-      const response = await chrome.runtime.sendMessage({ action: 'isSidePanelOpen'});
-      return response.isOpen;
-    } catch (error) {
-      console.error('Error checking side panel status:', error);
-      return false;
-    }
-}
-
 // Open PDF in the custom viewer
 function openPDFInViewer(pdfUrl) {
-    const viewerUrl = chrome.runtime.getURL('PDF_VIEWER/viewer.html');
-    const fullUrl = `${viewerUrl}?file=${pdfUrl}`;
-    window.open(fullUrl, '_blank');
+    chrome.runtime.sendMessage({
+        action: "openPdfViewer",
+        pdfUrl
+      });
+    
 }
 
 // Intercept default PDF function when side panel open
@@ -270,14 +262,13 @@ document.addEventListener('click', async (event) => {
     const link = target.closest('a');
   
     if (link && link.href) {
-      const isOpen = await isSidePanelOpen();
-  
-      if (isOpen && link.href.toLowerCase().endsWith('.pdf')) {
-        event.preventDefault();
-        event.stopPropagation();
-        openPDFInViewer(link.href);
+        const result = await chrome.storage.sync.get(['analyzePDFs']);
+        if (result.analyzePDFs && link.href.toLowerCase().endsWith('.pdf')) {
+          event.preventDefault();
+          event.stopPropagation();
+          openPDFInViewer(link.href);
+        }
       }
-    }
 })
 
 async function handleInlineExplanation(text) {

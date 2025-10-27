@@ -20,7 +20,8 @@
         "matches": ["<all_urls>"],
         "js": ["content.js", "./shared/tooltip.js"],
         "css": ["content.css"],
-        "run_at": "document_end"
+        "run_at": "document_end",
+        "all_frames": true
     }],
     "action": {
         "default_title": "Meridian: Navigate the Internet, Explore the World"
