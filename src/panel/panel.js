@@ -1,5 +1,5 @@
 import * as smd from '../smd.js';
-import { cosineSimilarity, sendMessageAsync } from "../utils.js";
+import { cosineSimilarity, sendMessageAsync } from "../utils/utils.js";
 
 const submitBtn = document.getElementById("submit-btn");
 const assistantResponseBox = document.getElementById("assistant-response-box");

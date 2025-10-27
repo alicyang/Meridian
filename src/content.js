@@ -259,7 +259,7 @@ async function isSidePanelOpen() {
 
 // Open PDF in the custom viewer
 function openPDFInViewer(pdfUrl) {
-    const viewerUrl = chrome.runtime.getURL('PDF_VIEWER/viewer.html');
+    const viewerUrl = chrome.runtime.getURL('./src/pdf_viewer/viewer.html');
     const fullUrl = `${viewerUrl}?file=${pdfUrl}`;
     window.open(fullUrl, '_blank');
 }

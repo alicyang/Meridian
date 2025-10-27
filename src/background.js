@@ -49,22 +49,17 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // handler for switching tabs
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-	const tab = await chrome.tabs.get(activeInfo.tabId);
-	if (!(await checkAccessPermissions(tab.url))) {
-		return;
-	}
-	const tabProcessed = await processNewTab(tab);
-	if (tabProcessed) { 
-		chrome.runtime.sendMessage({
-			type: "SWAP_SEARCH_SESSION",
-			url: tab.url
-		});
-	} else {
-		chrome.runtime.sendMessage({
-			type: "SEARCHING_UNAVAILABLE"
-		});
-	}
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+	const tab = await chrome.tabs.get(tabId);
+	const { url } = tab;
+
+	if (!/^https?:\/\//.test(url) || !(await checkAccessPermissions(url))) return;
+
+	const type = (await processNewTab(tab))
+		? "SWAP_SEARCH_SESSION"
+		: "SEARCHING_UNAVAILABLE";
+
+	chrome.runtime.sendMessage({ type, url }).catch(() => { });
 });
 
 
