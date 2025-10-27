@@ -9,7 +9,7 @@ export default defineConfig({
                 panel: resolve(__dirname, "src/panel/panel.html"),
                 // The background script (service worker)
                 background: resolve(__dirname, "src/background.js"),
-                content: resolve(__dirname, "src/content.js")
+                content: resolve(__dirname, "src/content.js"),
             },
             output: {
                 // Ensure background.js and content.js are not bundled into assets

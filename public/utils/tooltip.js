@@ -2,7 +2,6 @@ let currentTooltip = null;
 let selectedText = '';
 let lastSelectionRect = null;
 
-
 document.addEventListener('mouseup', () => {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
