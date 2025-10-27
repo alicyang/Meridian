@@ -45,16 +45,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-async function isSidePanelOpen() {
-  try {
-    const response = await chrome.runtime.sendMessage({ action: 'isSidePanelOpen'});
-    return response.isOpen;
-  } catch (error) {
-    console.error('Error checking side panel status:', error);
-    return false;
-  }
-}
-
 // Open PDF in the custom viewer
 function openPDFInViewer(pdfUrl) {
   chrome.runtime.sendMessage({

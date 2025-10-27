@@ -2,6 +2,7 @@ import * as pdfjsLib from './pdf.min.mjs';
 // Import the official PDF viewer components (handles text layer + rendering)
 import { EventBus, PDFPageView } from '../node_modules/pdfjs-dist/web/pdf_viewer.mjs';
 
+
 // Chrome extensions cannot load remote files directly,
 // so use chrome.runtime.getURL() to point to our local worker file.
 pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('PDF_VIEWER/pdf.worker.min.mjs');

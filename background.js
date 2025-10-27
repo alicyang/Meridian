@@ -1,10 +1,8 @@
 // Background service worker for HelpMyMom extension
-let sidePanelOpen = false;
 
 // side panel opening logic
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ tabId: tab.id }); // delete tabId for a global side panel
-  sidePanelOpen = true;
   
 })
 
@@ -314,11 +312,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: err.message });
       }
     })();
-    return true;
-  }
-
-  if (message.action === 'isSidePanelOpen') {
-    sendResponse({ isOpen: sidePanelOpen });
     return true;
   }
 
