@@ -15,6 +15,7 @@
   "dependencies": {
     "@google/genai": "^1.25.0",
     "dexie": "^4.2.1",
+    "firebase-functions": "^6.6.0",
     "pdfjs-dist": "^5.4.296"
   }
 }

@@ -1,14 +1,10 @@
-import { GoogleGenAI } from "@google/genai";
 import Dexie from "dexie";
 import PageFeature from "./page-feature";
+const EMBED_BATCH_URL = "https://embedbatch-fgq65muclq-uc.a.run.app/";
 
 // shared states
-let gemini = null;
 let db = null;
 let sidePanelOpen = false;
-
-const LINK = "link";
-const HEADER = "header"; 
 
 // --- Prevent Chrome message channel warnings ---
 function handleAsync(fn) {
@@ -23,27 +19,24 @@ function handleAsync(fn) {
 	};
   }
 
-//REDUNDANT CODE
-// // side panel opening logic
-// chrome.action.onClicked.addListener((tab) => {
-// 	chrome.sidePanel.open({ tabId: tab.id }); // delete tabId for a global side panel
-// })
+// ensure IndexedDB (Dexie) is initialized before any use
+async function ensureDb() {
+	if (!db) {
+		db = new Dexie("SmartSearchDB");
+		// keep schema consistent with current usage
+		db.version(1).stores({
+			embeddings: "++id, url, type, content, embedding, ts, tabId"
+		});
+	}
+}
 
 // handler on install 
 chrome.runtime.onInstalled.addListener(() => {
 	// initialize IndexedDB 
 	db = new Dexie("SmartSearchDB");
 	db.version(1).stores({
-		embeddings: "++id, url, type, content, embedding, ts"
+		embeddings: "++id, url, type, content, embedding, ts, tabId"
 	});
-
-	// set up Gemini embedding API 
-	const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-	if (!apiKey) {
-		console.error("API key is missing. Please provide a valid API key.");
-	}
-	gemini = new GoogleGenAI({ apiKey });
-	chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 	// Create context menu for inline tooltips
 	console.log('HelpMyMom extension installed, creating context menu...');
@@ -63,127 +56,119 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // handler for switching tabs
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+	await ensureDb();
 	const tab = await chrome.tabs.get(tabId);
 	const { url } = tab;
 
-	if (!/^https?:\/\//.test(url) || !(await checkAccessPermissions(url))) return;
-
-	const type = (await processNewTab(tab))
-		? "SWAP_SEARCH_SESSION"
-		: "SEARCHING_UNAVAILABLE";
-
-	chrome.runtime.sendMessage({ type, url }).catch(() => { });
+	if (!/^https?:\/\//.test(url) || !(await checkAccessPermissions(url))) {
+		chrome.runtime.sendMessage({ type: "SEARCHING_UNAVAILABLE", url }).catch(() => { });
+	} else {
+		await processNewTab(tab);
+		chrome.runtime.sendMessage({ type: "SWAP_SEARCH_SESSION", url }).catch(() => { });
+	}
 });
 
-// SmartSearch: embedding handler
-async function onEmbeddingRequest(msg) {
-	const response = await embedString(msg.text);
-	const embedding = response.embeddings[0].values;
-	return { embedding };
-  }
-  
-  // SmartSearch: DB fetch
-  async function onFetchDbEmbedding(msg) {
-	const db = getDB();
-	const stored = await db.embeddings.where("url").equals(msg.url).toArray();
-	return { embeddings: stored };
-  }
-  
-  // HelpMyMom: explain selected text
-  async function onExplainSelection(msg) {
-	const text = (msg.text || "").trim();
-	if (!text) return { success: false, error: "No text provided" };
-  
-	const session = await getNanoSession();
-	const result = await session.prompt([{ role: "user", content: `Explain: "${text}"` }]);
-	const explanation = typeof result === "string" ? result : (result?.toString?.() || JSON.stringify(result));
-	return { success: true, explanation };
-  }
-
-  // Action: get user settings
-async function onGetSettings() {
-	const result = await chrome.storage.sync.get(['targetLanguage', 'preferredAI']);
-	return {
-	  targetLanguage: result.targetLanguage || 'en',
-	  preferredAI: result.preferredAI || 'local'
-	};
-  }
-  
-  // Action: explain text (used by popup and tooltip)
-  async function onExplainText(msg, sender) {
-	const text = (msg.text || '').trim();
-	if (!text) return { success: false, error: 'No text provided' };
-  
-	const session = await getNanoSession();
-	const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
-	const explanation = typeof result === 'string'
-	  ? result
-	  : (result?.toString?.() || JSON.stringify(result));
-  
-	// If called from a webpage (has a tab id), also show inline tooltip
-	if (sender.tab && sender.tab.id) {
-	  try {
-		await chrome.tabs.sendMessage(sender.tab.id, {
-		  action: "showInlineExplanationTooltip",
-		  text,
-		  explanation
-		});
-		} catch (err) {
-			console.warn('Could not send tooltip message:', err);
-		}
+chrome.tabs.onRemoved.addListener((tabId) => {
+	if (db) {
+		db.embeddings.where("tabId").equals(tabId).delete();
 	}
-  
-	return { success: true, explanation };
-  }
-  
-  // Action: open a PDF in the viewer
-  async function onOpenPdfViewer(msg, sender) {
-	if (!msg.pdfUrl) return { success: false, error: 'No PDF URL provided' };
-  
-	const viewerUrl = chrome.runtime.getURL("PDF_VIEWER/viewer.html");
-	const fullUrl = `${viewerUrl}?file=${encodeURIComponent(msg.pdfUrl)}`;
-  
-	if (sender.tab && sender.tab.id) {
-	  await chrome.tabs.update(sender.tab.id, { url: fullUrl });
-	} else {
-	  await chrome.tabs.create({ url: fullUrl });
-	}
-  
-	return { success: true };
-  }
-
+});
 
 // message handler 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-	if (msg.type === "EMBEDDING_REQUEST") return handleAsync(onEmbeddingRequest)(msg, sender, sendResponse);
-	if (msg.type === "FETCH_DB_EMBEDDING") return handleAsync(onFetchDbEmbedding)(msg, sender, sendResponse);
-	if (msg.type === "EXPLAIN_SELECTION") return handleAsync(onExplainSelection)(msg, sender, sendResponse);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+	switch (message.type) {
+		case "EMBEDDING_REQUEST":
+			(async () => {
+				const embedding = await embedString(message.text);
+				sendResponse({ embedding });
+			})();
+			return true; 
+		case "FETCH_DB_EMBEDDING":
+			(async () => {
+				await ensureDb();
+				const stored_embeddings = await db.embeddings.where("url").equals(message.url).toArray();
+				sendResponse({ embeddings: stored_embeddings });
+			})();
+			return true;
+		case "DELETE_DB_EMBEDDING": 
+			(async () => {
+				await ensureDb();
+				const stored_embeddings = await db.embeddings.where("url").equals(message.url).toArray();
+				sendResponse({ embeddings: stored_embeddings });
+			})();
+			return true;
+		case "PROCESS_PAGE":
+			(async () => {
+				try {
+					await ensureDb();
+					const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+					if (tabs.length > 0) {
+						await processNewTab(tabs[0]);
+						sendResponse({ success: true });
+					} else {
+						sendResponse({ success: false, error: "No active tab" });
+					}
+				} catch (error) {
+					sendResponse({ success: false, error: error.message });
+				}
+			})();
+			return true;
+		case "EXPLAIN_SELECTION": 
+			// Message shape: { type: 'EXPLAIN_SELECTION', text: 'selected text', options: { ... } }
+            (async () => {
+                try {
+                    const text = (message.text || '').trim();
+                    if (!text) {
+                        sendResponse({ success: false, error: 'No text provided' });
+                        return;
+                    }
 
-	if (msg.action === "getSettings") {
+                    const session = await getNanoSession();
+
+                    // Prompt the session; some SDKs return an object, adapt accordingly
+                    const result = await session.prompt([
+                        {
+                            role: 'user',
+                            content: `
+                                Please explain the following text using very simple language in the language of the speaker's choosing.  
+                                Use the format described above — start with an explanation, then give a list of challenging words with definitions.
+
+                                Here is the text:
+                                "${text}"`.trim()
+                        }
+                    ]);
+
+                    const textResult = result;
+
+                    sendResponse({ success: true, explanation: textResult });
+                } catch (err) {
+                    console.error('EXPLAIN_SELECTION error in background:', err);
+                    sendResponse({ success: false, error: err?.message || 'Unknown error' });
+                }
+            })();
+		}
+	if (message.action === "getSettings") {
 		return handleAsync(onGetSettings)(msg, sender, sendResponse);
-	  }
-	
-	  if (msg.action === "explainText") {
+	}
+
+	if (message.action === "explainText") {
 		return handleAsync(onExplainText)(msg, sender, sendResponse);
-	  }
-	
-	  if (msg.action === "openPdfViewer") {
+	}
+
+	if (message.action === "openPdfViewer") {
 		return handleAsync(onOpenPdfViewer)(msg, sender, sendResponse);
-	  }
+	}
 });
 
-// generate embeddings for a new tab, returns false if tab can't be processed
+// generate embeddings for a new tab
 async function processNewTab(tab) {
-	if (!(await checkAccessPermissions(tab.url))) {
-		return false; 
-	}
+	await ensureDb();
 	if ((await db.embeddings.where("url").equals(tab.url).count()) === 0) {
 		const features = await getPageFeatures(tab);
 		const embeddings = await embedFeatures(features);
 		// TODO: pass in features entirely if upgrading to tier 1 
-		await saveEmbeddings(features.links);
+		await saveEmbeddings(features.links, tab.id);
 	}
-	return true; 
 }
 
 // returns true if we have permissions to inject scripts on this page 
@@ -204,8 +189,7 @@ async function getPageFeatures(tab) {
 						type: "link",
 						content: {
 							text: a.innerText.trim(),
-							href: a.href,
-							pos: a
+							href: a.href
 						},
 						url: tabUrl
 					}))
@@ -216,8 +200,7 @@ async function getPageFeatures(tab) {
 						type: "header",
 						content: {
 							level: h.tagName,
-							text: h.innerText.trim(),
-							pos: h.getBoundingClientRect().top + window.scrollY,
+							text: h.innerText.trim()
 						},
 						url: tabUrl
 					}))
@@ -251,25 +234,28 @@ async function embedFeatures(features) {
 
 		for (let i = 0; i < contents.length; i += batchSize) {
 			const batch = contents.slice(i, i + batchSize);
-			const response = await gemini.models.embedContent({
-				model: "gemini-embedding-001",
-				contents: batch,
-				outputDimensionality: 768,
-				taskType: "QUERY"
+			const response = await fetch(EMBED_BATCH_URL, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ contents: batch })
 			});
-
-			// Store each embedding result
-			allEmbeddings.push(...response.embeddings.map(e => e.values));
+			if (!response.ok) {
+				console.error("Embedding request failed:", response.statusText);
+				continue;
+			}
+			const data = await response.json();
+			if (!data.embeddings) {
+				console.error("Invalid embedding response:", data);
+				continue;
+			}
+			allEmbeddings.push(...data.embeddings.map(e => e.values));
 		}
-
 		return allEmbeddings;
 	}
-
-	// Run embedding for each type of feature
 	const linkEmbeddings = await embedInBatches(linkTexts);
 	const headerEmbeddings = await embedInBatches(headerTexts);
 
-	// Attach embeddings to features
+	// attach embeddings to features
 	features.links.forEach((f, i) => {
 		f.embedding = linkEmbeddings[i];
 	});
@@ -283,16 +269,17 @@ async function embedFeatures(features) {
 
 // returns a string embedding from Gemini Embeddings API 
 async function embedString(str) {
-	return await gemini.models.embedContent({
-		model: "gemini-embedding-001",
-		contents: [str],
-		outputDimensionality: 768,
-		taskType: "QUERY",
+	const response = await fetch(EMBED_BATCH_URL, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ contents: str }),
 	});
+	const data = await response.json();
+	return data.embeddings[0].values; 
 }
 
 // persist embeddings to IndexedDb 
-async function saveEmbeddings(features) {
+async function saveEmbeddings(features, tabId) {
 	console.log(features);
 	await db.transaction("rw", db.embeddings, async () => {
 		for (let i = 0; i < features.length; i++) {
@@ -302,6 +289,7 @@ async function saveEmbeddings(features) {
 				content: JSON.stringify(features[i].content),
 				embedding: JSON.stringify(features[i]._embedding),
 				timestamp: Date.now(),
+				tabId: tabId,
 			});
 		}
 	});
