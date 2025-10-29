@@ -10,10 +10,24 @@ let sidePanelOpen = false;
 const LINK = "link";
 const HEADER = "header"; 
 
-// side panel opening logic
-chrome.action.onClicked.addListener((tab) => {
-	chrome.sidePanel.open({ tabId: tab.id }); // delete tabId for a global side panel
-})
+// --- Prevent Chrome message channel warnings ---
+function handleAsync(fn) {
+	return (message, sender, sendResponse) => {
+	  Promise.resolve(fn(message, sender))
+		.then((res) => sendResponse(res))
+		.catch((err) => {
+		  console.error("Handler error:", err);
+		  sendResponse({ success: false, error: err?.message || "Unknown error" });
+		});
+	  return true; // keep channel open asynchronously
+	};
+  }
+
+//REDUNDANT CODE
+// // side panel opening logic
+// chrome.action.onClicked.addListener((tab) => {
+// 	chrome.sidePanel.open({ tabId: tab.id }); // delete tabId for a global side panel
+// })
 
 // handler on install 
 chrome.runtime.onInstalled.addListener(() => {
@@ -61,147 +75,102 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 	chrome.runtime.sendMessage({ type, url }).catch(() => { });
 });
 
+// SmartSearch: embedding handler
+async function onEmbeddingRequest(msg) {
+	const response = await embedString(msg.text);
+	const embedding = response.embeddings[0].values;
+	return { embedding };
+  }
+  
+  // SmartSearch: DB fetch
+  async function onFetchDbEmbedding(msg) {
+	const db = getDB();
+	const stored = await db.embeddings.where("url").equals(msg.url).toArray();
+	return { embeddings: stored };
+  }
+  
+  // HelpMyMom: explain selected text
+  async function onExplainSelection(msg) {
+	const text = (msg.text || "").trim();
+	if (!text) return { success: false, error: "No text provided" };
+  
+	const session = await getNanoSession();
+	const result = await session.prompt([{ role: "user", content: `Explain: "${text}"` }]);
+	const explanation = typeof result === "string" ? result : (result?.toString?.() || JSON.stringify(result));
+	return { success: true, explanation };
+  }
+
+  // Action: get user settings
+async function onGetSettings() {
+	const result = await chrome.storage.sync.get(['targetLanguage', 'preferredAI']);
+	return {
+	  targetLanguage: result.targetLanguage || 'en',
+	  preferredAI: result.preferredAI || 'local'
+	};
+  }
+  
+  // Action: explain text (used by popup and tooltip)
+  async function onExplainText(msg, sender) {
+	const text = (msg.text || '').trim();
+	if (!text) return { success: false, error: 'No text provided' };
+  
+	const session = await getNanoSession();
+	const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
+	const explanation = typeof result === 'string'
+	  ? result
+	  : (result?.toString?.() || JSON.stringify(result));
+  
+	// If called from a webpage (has a tab id), also show inline tooltip
+	if (sender.tab && sender.tab.id) {
+	  try {
+		await chrome.tabs.sendMessage(sender.tab.id, {
+		  action: "showInlineExplanationTooltip",
+		  text,
+		  explanation
+		});
+		} catch (err) {
+			console.warn('Could not send tooltip message:', err);
+		}
+	}
+  
+	return { success: true, explanation };
+  }
+  
+  // Action: open a PDF in the viewer
+  async function onOpenPdfViewer(msg, sender) {
+	if (!msg.pdfUrl) return { success: false, error: 'No PDF URL provided' };
+  
+	const viewerUrl = chrome.runtime.getURL("PDF_VIEWER/viewer.html");
+	const fullUrl = `${viewerUrl}?file=${encodeURIComponent(msg.pdfUrl)}`;
+  
+	if (sender.tab && sender.tab.id) {
+	  await chrome.tabs.update(sender.tab.id, { url: fullUrl });
+	} else {
+	  await chrome.tabs.create({ url: fullUrl });
+	}
+  
+	return { success: true };
+  }
 
 
 // message handler 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-	switch (message.type) {
-		case "EMBEDDING_REQUEST":
-			(async () => {
-				const response = await embedString(message.text);
-				const embedding = response.embeddings[0].values;
-				sendResponse({ embedding });
-			})();
-			return true; 
-		case "FETCH_DB_EMBEDDING":
-			(async () => {
-				const stored_embeddings = await db.embeddings.where("url").equals(message.url).toArray();
-				sendResponse({ embeddings: stored_embeddings });
-			})();
-			return true;
-		case "EXPLAIN_SELECTION": 
-			// Message shape: { type: 'EXPLAIN_SELECTION', text: 'selected text', options: { ... } }
-			(async () => {
-				try {
-					const text = (message.text || '').trim();
-					if (!text) {
-						sendResponse({ success: false, error: 'No text provided' });
-						return;
-					}
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+	if (msg.type === "EMBEDDING_REQUEST") return handleAsync(onEmbeddingRequest)(msg, sender, sendResponse);
+	if (msg.type === "FETCH_DB_EMBEDDING") return handleAsync(onFetchDbEmbedding)(msg, sender, sendResponse);
+	if (msg.type === "EXPLAIN_SELECTION") return handleAsync(onExplainSelection)(msg, sender, sendResponse);
 
-					const session = await getNanoSession();
-
-					// Prompt the session; some SDKs return an object, adapt accordingly
-					const result = await session.prompt([
-						{
-							role: 'user',
-							content: `
-              					Please explain the following text using very simple language in the language of the speaker's choosing.  
-              					Use the format described above — start with an explanation, then give a list of challenging words with definitions.
-
-              					Here is the text:
-              					"${text}"`.trim()
-						}
-					]);
-
-					const textResult = result;
-
-					sendResponse({ success: true, explanation: textResult });
-				} catch (err) {
-					console.error('EXPLAIN_SELECTION error in background:', err);
-					sendResponse({ success: false, error: err?.message || 'Unknown error' });
-				}
-			})();
-			// Tell Chrome to call sendResponse asynchronously
-			return true;
-	}
-
-	switch (message.action) {
-		case "getSettings":
-			chrome.storage.sync.get(['targetLanguage', 'preferredAI'], (result) => {
-				sendResponse({
-					targetLanguage: result.targetLanguage || 'en',
-					preferredAI: result.preferredAI || 'local'
-				});
-			});
-			return true;
-		case "explainText": 
-			if (message.source == "pdf_viewer") {
-				(async () => {
-					try {
-						const text = (message.text || '').trim();
-						if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
-
-						// Get language preference
-						const settings = await chrome.storage.sync.get(['targetLanguage']);
-						const language = settings.targetLanguage || 'en';
-
-						// Clear existing session if language changed
-						if (nanoSession && nanoSession.currentLanguage !== language) {
-							clearNanoSession();
-						}
-
-						// using existing AI session
-						const session = await getNanoSession();
-						const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
-
-						const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
-
-						// send response back to PDF viewer
-						chrome.tabs.sendMessage(sender.tab.id, {
-							action: "showExplanation",
-							explanation: explanation
-						});
-						sendResponse({ success: true, explanation: explanation });
-					} catch (err) {
-						console.error('PDF explainText error:', err);
-						sendResponse({ success: false, error: err?.message || 'Unknown error' });
-					}
-				})();
-				return true;
-			} else {
-				(async () => {
-					try {
-					  const text = (message.text || '').trim();
-					  if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
-			  
-					  const session = await getNanoSession();
-					  const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
-					  const explanation = 
-						typeof result === 'string'
-						  ? result
-						  : (result?.toString?.() || JSON.stringify(result));
-			  
-					  if (sender.tab && sender.tab.id) {
-						// Send message back to page for inline tooltip
-						chrome.tabs.sendMessage(sender.tab.id, {
-						  action: "showInlineExplanationTooltip",
-						  text,
-						  explanation
-						});
-					  } else {
-						// Message came from popup → just respond directly
-						sendResponse({ success: true, explanation });
-					  }
-			  
-					} catch (err) {
-					  console.error('explainText error:', err);
-					  // Tell the content script to show an inline error tooltip
-					  if (sender.tab && sender.tab.id) {
-						chrome.tabs.sendMessage(sender.tab.id, {
-						  action: "showInlineErrorTooltip",
-						  text,
-						  error: err.message
-						});
-					  }
-					  // Always respond to popup
-					  sendResponse({ success: false, error: err.message });
-					}
-				  })();
-				  return true;
-			}
-	}
-})
+	if (msg.action === "getSettings") {
+		return handleAsync(onGetSettings)(msg, sender, sendResponse);
+	  }
+	
+	  if (msg.action === "explainText") {
+		return handleAsync(onExplainText)(msg, sender, sendResponse);
+	  }
+	
+	  if (msg.action === "openPdfViewer") {
+		return handleAsync(onOpenPdfViewer)(msg, sender, sendResponse);
+	  }
+});
 
 // generate embeddings for a new tab, returns false if tab can't be processed
 async function processNewTab(tab) {
