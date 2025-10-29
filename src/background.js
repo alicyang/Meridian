@@ -68,6 +68,18 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 	}
 });
 
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+	if (changeInfo.status !== 'complete' || !tab?.url) return;
+	await ensureDb();
+	const { url } = tab;
+	if (!/^https?:\/\//.test(url) || !(await checkAccessPermissions(url))) {
+		chrome.runtime.sendMessage({ type: "SEARCHING_UNAVAILABLE", url }).catch(() => { });
+	} else {
+		await processNewTab(tab);
+		chrome.runtime.sendMessage({ type: "SWAP_SEARCH_SESSION", url }).catch(() => { });
+	}
+});
+
 chrome.tabs.onRemoved.addListener((tabId) => {
 	if (db) {
 		db.embeddings.where("tabId").equals(tabId).delete();

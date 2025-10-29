@@ -15,17 +15,17 @@
         <!-- smart search ui -->
         <div id="smart-search">
             <h1>Smart Search</h1>
-            <!-- input box for user's question -->
-            <textarea id='user-input' placeholder="What would you like to search for?"></textarea>
-            <button id="submit-btn" type="submit">Search</button>
-            <!-- output box for language model -->
-            <div id="language-model-box">
-                <div class="loader-container">
+            <!-- chat container -->
+            <div id="chat-container">
+                <div id="chat-messages"></div>
+                <div class="loader-container" id="assistant-loader-container">
                     <div class="loader" id="assistant-loader"></div>
                 </div>
-                <div id="assistant-response-box">
-                    <p>Assistant's Response will appear below.</p>
-                </div>
+            </div>
+            <!-- input area -->
+            <div id="chat-input-area">
+                <textarea id='user-input' placeholder="What would you like to search for?"></textarea>
+                <button id="submit-btn" type="submit">Send</button>
             </div>
         </div>
 

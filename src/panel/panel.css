@@ -4,39 +4,101 @@
     font-family: sans-serif;
 }
 
-#user-input, #assistant-box {
-    width: 100%;
-    min-height: 100px;
-    font-size: 16px;
-    padding: 15px;
-    border: 1px solid #ccc;
-    white-space: pre-wrap;
+/* Chat interface styles */
+#chat-container {
+    height: 300px;
+    border: 1px solid var(--clay);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 12px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+#chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.message {
+    max-width: 85%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.4;
     word-wrap: break-word;
 }
 
-#language-model-box {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    min-height: 100px;
-    font-size: 16px;
-    padding: 10px 8px;
-    border: 1px solid #ccc;
+.message.user {
+    align-self: flex-end;
+    background: var(--ocean);
+    color: var(--cream);
+    border-bottom-right-radius: 4px;
 }
 
-#assistant-response-box {
+.message.assistant {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--cream);
+    border-bottom-left-radius: 4px;
+}
+
+#chat-input-area {
     display: flex;
-    flex-direction: column;
-    width: 100%;
-    font-size: 16px;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+#user-input {
+    flex: 1;
+    min-height: 40px;
+    max-height: 100px;
+    font-size: 14px;
+    padding: 8px 12px;
+    border: 1px solid var(--clay);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--cream);
+    resize: none;
+    font-family: inherit;
+}
+
+#user-input::placeholder {
+    color: rgba(248, 245, 238, 0.6);
+}
+
+#submit-btn {
+    padding: 8px 16px;
+    background: var(--ocean);
+    color: var(--cream);
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+#submit-btn:hover:not(:disabled) {
+    background: rgba(47, 60, 181, 0.8);
+}
+
+#submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .loader-container {
-    padding-top: 10px;
     display: flex;
     justify-content: center;
     align-items: center;
     width: 100%;
+    padding: 8px 0;
+}
+
+#assistant-loader-container {
+    display: none;
 }
 .loader {
     display: none;
