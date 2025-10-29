@@ -233,7 +233,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           break;
         
         case 'getStoredSelection':
-          console.log('Sending text to popup file:', request.text);
+          console.log('Sending text to popup file:', selectedText);
           sendResponse({text: selectedText});
           break;
     

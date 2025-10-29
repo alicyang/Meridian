@@ -322,7 +322,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
       console.log('Processing selected text for inline tooltip:', selectedText);
 
-      chrome.runtime.sendMessage(tab.id, {
+      chrome.tabs.sendMessage(tab.id, {
         action: "showInlineExplanation",
         text: selectedText
       });
