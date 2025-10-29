@@ -9,7 +9,6 @@ let sidePanelOpen = false;
 // side panel opening logic
 chrome.action.onClicked.addListener((tab) => {
 	chrome.sidePanel.open({ tabId: tab.id }); // delete tabId for a global side panel
-	sidePanelOpen = true;
 })
 
 // ensure IndexedDB (Dexie) is initialized before any use
@@ -116,7 +115,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 						return;
 					}
 
-					// Ask background to prepare session (or error out)
 					const session = await getNanoSession();
 
 					// Prompt the session; some SDKs return an object, adapt accordingly
@@ -137,7 +135,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 					sendResponse({ success: true, explanation: textResult });
 				} catch (err) {
 					console.error('EXPLAIN_SELECTION error in background:', err);
-					// If usefully specific, return a clearer message
 					sendResponse({ success: false, error: err?.message || 'Unknown error' });
 				}
 			})();
@@ -155,44 +152,80 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 			});
 			return true;
 		case "explainText": 
-			if (message.source != "pdf_viewer") {
-				break;
-			}
-			(async () => {
-				try {
-					const text = (message.text || '').trim();
-					if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
+			if (message.source == "pdf_viewer") {
+				(async () => {
+					try {
+						const text = (message.text || '').trim();
+						if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
 
-					// Get language preference
-					const settings = await chrome.storage.sync.get(['targetLanguage']);
-					const language = settings.targetLanguage || 'en';
+						// Get language preference
+						const settings = await chrome.storage.sync.get(['targetLanguage']);
+						const language = settings.targetLanguage || 'en';
 
-					// Clear existing session if language changed
-					if (nanoSession && nanoSession.currentLanguage !== language) {
-						clearNanoSession();
+						// Clear existing session if language changed
+						if (nanoSession && nanoSession.currentLanguage !== language) {
+							clearNanoSession();
+						}
+
+						// using existing AI session
+						const session = await getNanoSession();
+						const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
+
+						const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
+
+						// send response back to PDF viewer
+						chrome.tabs.sendMessage(sender.tab.id, {
+							action: "showExplanation",
+							explanation: explanation
+						});
+						sendResponse({ success: true, explanation: explanation });
+					} catch (err) {
+						console.error('PDF explainText error:', err);
+						sendResponse({ success: false, error: err?.message || 'Unknown error' });
 					}
-
-					// using existing AI session
-					const session = await getNanoSession();
-					const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
-
-					const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
-
-					// send response back to PDF viewer
-					chrome.tabs.sendMessage(sender.tab.id, {
-						action: "showExplanation",
-						explanation: explanation
-					});
-					sendResponse({ success: true, explanation: explanation });
-				} catch (err) {
-					console.error('PDF explainText error:', err);
-					sendResponse({ success: false, error: err?.message || 'Unknown error' });
-				}
-			})();
-			return true;
-		case "isSidePanelOpen": 
-			sendResponse({ isOpen: sidePanelOpen });
-			return true;
+				})();
+				return true;
+			} else {
+				(async () => {
+					try {
+					  const text = (message.text || '').trim();
+					  if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
+			  
+					  const session = await getNanoSession();
+					  const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
+					  const explanation = 
+						typeof result === 'string'
+						  ? result
+						  : (result?.toString?.() || JSON.stringify(result));
+			  
+					  if (sender.tab && sender.tab.id) {
+						// Send message back to page for inline tooltip
+						chrome.tabs.sendMessage(sender.tab.id, {
+						  action: "showInlineExplanationTooltip",
+						  text,
+						  explanation
+						});
+					  } else {
+						// Message came from popup → just respond directly
+						sendResponse({ success: true, explanation });
+					  }
+			  
+					} catch (err) {
+					  console.error('explainText error:', err);
+					  // Tell the content script to show an inline error tooltip
+					  if (sender.tab && sender.tab.id) {
+						chrome.tabs.sendMessage(sender.tab.id, {
+						  action: "showInlineErrorTooltip",
+						  text,
+						  error: err.message
+						});
+					  }
+					  // Always respond to popup
+					  sendResponse({ success: false, error: err.message });
+					}
+				  })();
+				  return true;
+			}
 	}
 })
 
@@ -332,6 +365,8 @@ async function saveEmbeddings(features, tabId) {
 	console.log("Stored link embeddings in Dexie:", await db.embeddings.count());
 }
 
+/* explain_in_context code added here */
+
 // Handle context menu clicks for inline tooltips
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   console.log('Context menu clicked:', info);
@@ -371,15 +406,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 // Chrome Built-in AI (Gemini Nano) - Local processing
-// --- Session manager for Gemini Nano (centralized in background) ---
+// --- Session manager for Gemini Nano ---
 let nanoSession = null;           // holds the active session (if any)
 let sessionCreating = false;     // prevent parallel session creates
 
 async function getNanoSession() {
-	// Reuse if already created
 	if (nanoSession) return nanoSession;
 
-	// Prevent concurrent session creation attempts
 	if (sessionCreating) {
 		// wait until it's created (polling small delay)
 		while (sessionCreating) {
@@ -398,7 +431,6 @@ async function getNanoSession() {
 		const supportedLanguages = ['en', 'ja', 'es'];
 		const language = supportedLanguages.includes(targetLanguage) ? targetLanguage : 'en';
 
-		// Defensive checks & helpful errors
 		if (typeof LanguageModel === 'undefined') {
 			throw new Error('LanguageModel is undefined in the service worker. The built-in API may not be available here.');
 		}
@@ -410,7 +442,6 @@ async function getNanoSession() {
 			throw new Error('Built-in AI is unavailable on this device.');
 		}
 		if (availability === 'downloadable' || availability === 'downloading') {
-			// throw an informative error.
 			throw new Error('Built-in AI needs to finish downloading first.');
 		}
 
@@ -467,7 +498,6 @@ async function getNanoSession() {
 			}
 		});
 
-		// Optional: attach a basic "onClose" idea (some SDKs let you listen for session close)
 		console.log('Nano session created in background');
 
 		return nanoSession;
@@ -480,7 +510,7 @@ async function getNanoSession() {
 	}
 }
 
-// helper to clear the session (if you want to force reload later)
+// helper to clear the session (to force reload later)
 function clearNanoSession() {
 	try {
 		// If session exposes a close/dispose method, call it here
