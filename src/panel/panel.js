@@ -11,11 +11,36 @@ const notAvailableDiv = document.getElementById("not-available")
 let currSearchSession;
 let currSearchURL; 
 let searchModel;
-const searchSessionCache = new Map(); // maps tab urls to search sessions 
+const searchSessionCache = new Map(); // maps tab urls to search sessions
+const MAX_CACHE_SIZE = 15; 
 let sessionIsReady = false; // should be checked before accessing/changing currSearchSession or currSearchURL 
 let modelIsBusy = false; // should be checked before feeding new input into model 
 
-const numMatches = 30; 
+const numMatches = 30;
+
+// LRU cache helpers
+function updateCacheAccess(url) {
+    if (searchSessionCache.has(url)) {
+        const session = searchSessionCache.get(url);
+        searchSessionCache.delete(url);
+        searchSessionCache.set(url, session);
+    }
+}
+
+async function evictOldestSession() {
+    if (searchSessionCache.size > 0) {
+        const oldestUrl = searchSessionCache.keys().next().value;
+        const session = searchSessionCache.get(oldestUrl);
+        searchSessionCache.delete(oldestUrl);
+        
+        // Clean up IndexedDB for this URL
+        try {
+            await sendMessageAsync({ type: "DELETE_DB_EMBEDDING", url: oldestUrl });
+        } catch (error) {
+            console.warn("Failed to clean up embeddings for evicted session:", error);
+        }
+    }
+} 
 
 async function main() {
     searchModel = await LanguageModel.create({
@@ -121,6 +146,14 @@ async function setSearchSession(url) {
         }
         searchSession = await searchModel.clone();
         searchSessionCache.set(url, searchSession);
+        
+        // Evict oldest if cache is full
+        if (searchSessionCache.size > MAX_CACHE_SIZE) {
+            await evictOldestSession();
+        }
+    } else {
+        // Update access time for existing session
+        updateCacheAccess(url);
     }
     
     while (modelIsBusy) {
@@ -128,16 +161,6 @@ async function setSearchSession(url) {
     }
     currSearchSession = searchSession
     currSearchURL = url;
-    
-    // update cache 
-    if (searchSessionCache.size > 10) {
-        for (const [key] of searchSessionCache) {
-            if (key !== currSearchURL) {
-                searchSessionCache.delete(key);
-                break;
-            }
-        }
-    }
 }
 
 // TODO add some error handling
@@ -150,7 +173,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             await setSearchSession(message.url);
             sessionIsReady = true;
             break;
-        case "SEARCHING_UNAVAILABE":
+        case "SEARCHING_UNAVAILABLE":
             smartSearchDiv.style.display = "none";
             notAvailableDiv.style.display = "block";
     }

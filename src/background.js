@@ -1,14 +1,10 @@
-import { GoogleGenAI } from "@google/genai";
 import Dexie from "dexie";
 import PageFeature from "./page-feature";
+const EMBED_BATCH_URL = "https://embedbatch-fgq65muclq-uc.a.run.app/";
 
 // shared states
-let gemini = null;
 let db = null;
 let sidePanelOpen = false;
-
-const LINK = "link";
-const HEADER = "header"; 
 
 // side panel opening logic
 chrome.action.onClicked.addListener((tab) => {
@@ -16,21 +12,24 @@ chrome.action.onClicked.addListener((tab) => {
 	sidePanelOpen = true;
 })
 
+// ensure IndexedDB (Dexie) is initialized before any use
+async function ensureDb() {
+	if (!db) {
+		db = new Dexie("SmartSearchDB");
+		// keep schema consistent with current usage
+		db.version(1).stores({
+			embeddings: "++id, url, type, content, embedding, ts, tabId"
+		});
+	}
+}
+
 // handler on install 
 chrome.runtime.onInstalled.addListener(() => {
 	// initialize IndexedDB 
 	db = new Dexie("SmartSearchDB");
 	db.version(1).stores({
-		embeddings: "++id, url, type, content, embedding, ts"
+		embeddings: "++id, url, type, content, embedding, ts, tabId"
 	});
-
-	// set up Gemini embedding API 
-	const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-	if (!apiKey) {
-		console.error("API key is missing. Please provide a valid API key.");
-	}
-	gemini = new GoogleGenAI({ apiKey });
-	chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 	// Create context menu for inline tooltips
 	console.log('HelpMyMom extension installed, creating context menu...');
@@ -50,34 +49,61 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // handler for switching tabs
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+	await ensureDb();
 	const tab = await chrome.tabs.get(tabId);
 	const { url } = tab;
 
-	if (!/^https?:\/\//.test(url) || !(await checkAccessPermissions(url))) return;
-
-	const type = (await processNewTab(tab))
-		? "SWAP_SEARCH_SESSION"
-		: "SEARCHING_UNAVAILABLE";
-
-	chrome.runtime.sendMessage({ type, url }).catch(() => { });
+	if (!/^https?:\/\//.test(url) || !(await checkAccessPermissions(url))) {
+		chrome.runtime.sendMessage({ type: "SEARCHING_UNAVAILABLE", url }).catch(() => { });
+	} else {
+		await processNewTab(tab);
+		chrome.runtime.sendMessage({ type: "SWAP_SEARCH_SESSION", url }).catch(() => { });
+	}
 });
 
-
+chrome.tabs.onRemoved.addListener((tabId) => {
+	if (db) {
+		db.embeddings.where("tabId").equals(tabId).delete();
+	}
+});
 
 // message handler 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	switch (message.type) {
 		case "EMBEDDING_REQUEST":
 			(async () => {
-				const response = await embedString(message.text);
-				const embedding = response.embeddings[0].values;
+				const embedding = await embedString(message.text);
 				sendResponse({ embedding });
 			})();
 			return true; 
 		case "FETCH_DB_EMBEDDING":
 			(async () => {
+				await ensureDb();
 				const stored_embeddings = await db.embeddings.where("url").equals(message.url).toArray();
 				sendResponse({ embeddings: stored_embeddings });
+			})();
+			return true;
+		case "DELETE_DB_EMBEDDING": 
+			(async () => {
+				await ensureDb();
+				const stored_embeddings = await db.embeddings.where("url").equals(message.url).toArray();
+				sendResponse({ embeddings: stored_embeddings });
+			})();
+			return true;
+		case "PROCESS_PAGE":
+			(async () => {
+				try {
+					await ensureDb();
+					const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+					if (tabs.length > 0) {
+						await processNewTab(tabs[0]);
+						sendResponse({ success: true });
+					} else {
+						sendResponse({ success: false, error: "No active tab" });
+					}
+				} catch (error) {
+					sendResponse({ success: false, error: error.message });
+				}
 			})();
 			return true;
 		case "EXPLAIN_SELECTION": 
@@ -170,18 +196,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	}
 })
 
-// generate embeddings for a new tab, returns false if tab can't be processed
+// generate embeddings for a new tab
 async function processNewTab(tab) {
-	if (!(await checkAccessPermissions(tab.url))) {
-		return false; 
-	}
+	await ensureDb();
 	if ((await db.embeddings.where("url").equals(tab.url).count()) === 0) {
 		const features = await getPageFeatures(tab);
 		const embeddings = await embedFeatures(features);
 		// TODO: pass in features entirely if upgrading to tier 1 
-		await saveEmbeddings(features.links);
+		await saveEmbeddings(features.links, tab.id);
 	}
-	return true; 
 }
 
 // returns true if we have permissions to inject scripts on this page 
@@ -202,8 +225,7 @@ async function getPageFeatures(tab) {
 						type: "link",
 						content: {
 							text: a.innerText.trim(),
-							href: a.href,
-							pos: a
+							href: a.href
 						},
 						url: tabUrl
 					}))
@@ -214,8 +236,7 @@ async function getPageFeatures(tab) {
 						type: "header",
 						content: {
 							level: h.tagName,
-							text: h.innerText.trim(),
-							pos: h.getBoundingClientRect().top + window.scrollY,
+							text: h.innerText.trim()
 						},
 						url: tabUrl
 					}))
@@ -249,25 +270,28 @@ async function embedFeatures(features) {
 
 		for (let i = 0; i < contents.length; i += batchSize) {
 			const batch = contents.slice(i, i + batchSize);
-			const response = await gemini.models.embedContent({
-				model: "gemini-embedding-001",
-				contents: batch,
-				outputDimensionality: 768,
-				taskType: "QUERY"
+			const response = await fetch(EMBED_BATCH_URL, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ contents: batch })
 			});
-
-			// Store each embedding result
-			allEmbeddings.push(...response.embeddings.map(e => e.values));
+			if (!response.ok) {
+				console.error("Embedding request failed:", response.statusText);
+				continue;
+			}
+			const data = await response.json();
+			if (!data.embeddings) {
+				console.error("Invalid embedding response:", data);
+				continue;
+			}
+			allEmbeddings.push(...data.embeddings.map(e => e.values));
 		}
-
 		return allEmbeddings;
 	}
-
-	// Run embedding for each type of feature
 	const linkEmbeddings = await embedInBatches(linkTexts);
 	const headerEmbeddings = await embedInBatches(headerTexts);
 
-	// Attach embeddings to features
+	// attach embeddings to features
 	features.links.forEach((f, i) => {
 		f.embedding = linkEmbeddings[i];
 	});
@@ -281,16 +305,17 @@ async function embedFeatures(features) {
 
 // returns a string embedding from Gemini Embeddings API 
 async function embedString(str) {
-	return await gemini.models.embedContent({
-		model: "gemini-embedding-001",
-		contents: [str],
-		outputDimensionality: 768,
-		taskType: "QUERY",
+	const response = await fetch(EMBED_BATCH_URL, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ contents: str }),
 	});
+	const data = await response.json();
+	return data.embeddings[0].values; 
 }
 
 // persist embeddings to IndexedDb 
-async function saveEmbeddings(features) {
+async function saveEmbeddings(features, tabId) {
 	console.log(features);
 	await db.transaction("rw", db.embeddings, async () => {
 		for (let i = 0; i < features.length; i++) {
@@ -300,6 +325,7 @@ async function saveEmbeddings(features) {
 				content: JSON.stringify(features[i].content),
 				embedding: JSON.stringify(features[i]._embedding),
 				timestamp: Date.now(),
+				tabId: tabId,
 			});
 		}
 	});
