@@ -147,16 +147,90 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 }
             })();
 		}
-	if (message.action === "getSettings") {
-		return handleAsync(onGetSettings)(msg, sender, sendResponse);
-	}
+	switch (message.action) {
+		case "getSettings":
+			chrome.storage.sync.get(['targetLanguage', 'preferredAI'], (result) => {
+				sendResponse({
+					targetLanguage: result.targetLanguage || 'en',
+					preferredAI: result.preferredAI || 'local'
+				});
+			});
+			return true;
+		case "explainText":
+			if (message.source == "pdf_viewer") {
+				(async () => {
+					try {
+						const text = (message.text || '').trim();
+						if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
 
-	if (message.action === "explainText") {
-		return handleAsync(onExplainText)(msg, sender, sendResponse);
-	}
+						// Get language preference
+						const settings = await chrome.storage.sync.get(['targetLanguage']);
+						const language = settings.targetLanguage || 'en';
 
-	if (message.action === "openPdfViewer") {
-		return handleAsync(onOpenPdfViewer)(msg, sender, sendResponse);
+						// Clear existing session if language changed
+						if (nanoSession && nanoSession.currentLanguage !== language) {
+							clearNanoSession();
+						}
+
+						// using existing AI session
+						const session = await getNanoSession();
+						const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
+
+						const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
+
+						// send response back to PDF viewer
+						chrome.tabs.sendMessage(sender.tab.id, {
+							action: "showExplanation",
+							explanation: explanation
+						});
+						sendResponse({ success: true, explanation: explanation });
+					} catch (err) {
+						console.error('PDF explainText error:', err);
+						sendResponse({ success: false, error: err?.message || 'Unknown error' });
+					}
+				})();
+				return true;
+			} else {
+				(async () => {
+					try {
+						const text = (message.text || '').trim();
+						if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
+
+						const session = await getNanoSession();
+						const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
+						const explanation =
+							typeof result === 'string'
+								? result
+								: (result?.toString?.() || JSON.stringify(result));
+
+						if (sender.tab && sender.tab.id) {
+							// Send message back to page for inline tooltip
+							chrome.tabs.sendMessage(sender.tab.id, {
+								action: "showInlineExplanationTooltip",
+								text,
+								explanation
+							});
+						} else {
+							// Message came from popup → just respond directly
+							sendResponse({ success: true, explanation });
+						}
+
+					} catch (err) {
+						console.error('explainText error:', err);
+						// Tell the content script to show an inline error tooltip
+						if (sender.tab && sender.tab.id) {
+							chrome.tabs.sendMessage(sender.tab.id, {
+								action: "showInlineErrorTooltip",
+								text,
+								error: err.message
+							});
+						}
+						// Always respond to popup
+						sendResponse({ success: false, error: err.message });
+					}
+				})();
+				return true;
+			}
 	}
 });
 
