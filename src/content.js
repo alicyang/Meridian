@@ -259,7 +259,7 @@ async function performSearch(query) {
         searchMatches = matches.slice(0, 10);
         currentMatchIndex = -1;
         
-        showSearchResults(`Found ${searchMatches.length} matches`);
+        showSearchResults(`Showing ${searchMatches.length} matches`);
         
     } catch (error) {
         console.error("Search error:", error);

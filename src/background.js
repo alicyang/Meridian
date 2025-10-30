@@ -5,6 +5,7 @@ const EMBED_BATCH_URL = "https://embedbatch-fgq65muclq-uc.a.run.app/";
 // shared states
 let db = null;
 let sidePanelOpen = false;
+const processingUrls = new Set();
 
 // --- Prevent Chrome message channel warnings ---
 function handleAsync(fn) {
@@ -249,13 +250,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // generate embeddings for a new tab
 async function processNewTab(tab) {
-	await ensureDb();
-	if ((await db.embeddings.where("url").equals(tab.url).count()) === 0) {
-		const features = await getPageFeatures(tab);
-		const embeddings = await embedFeatures(features);
-		// TODO: pass in features entirely if upgrading to tier 1 
-        await saveEmbeddings([...features.links, ...features.headers], tab.id);
-	}
+    await ensureDb();
+    if (processingUrls.has(tab.url)) return;
+    processingUrls.add(tab.url);
+    try {
+        const existing = await db.embeddings.where("url").equals(tab.url).count();
+        if (existing === 0) {
+            console.log(`processing ${tab.url}`)
+            const features = await getPageFeatures(tab);
+            await embedFeatures(features);
+            await saveEmbeddings([...features.links, ...features.headers], tab.id);
+        }
+    } finally {
+        processingUrls.delete(tab.url);
+    }
 }
 
 // returns true if we have permissions to inject scripts on this page 
@@ -313,7 +321,7 @@ async function getPageFeatures(tab) {
                 const headSeen = new Set();
                 const dedupHeaders = [];
                 for (const h of headers) {
-                    const key = `${h.content.level}|${h.content.text}`;
+					const key = `${h.content.text.trim().replace(/\s+/g, ' ').normalize("NFKC").toLowerCase()}`;
                     if (!headSeen.has(key)) { headSeen.add(key); dedupHeaders.push(h); }
                 }
                 return { links: dedupLinks, headers: dedupHeaders };
@@ -327,6 +335,8 @@ async function getPageFeatures(tab) {
 			links: rawFeatures.links.map(f => new PageFeature(f.type, f.content, f.url)),
 			headers: rawFeatures.headers.map(f => new PageFeature(f.type, f.content, f.url))
 		};
+		console.log(features.headers);
+
 		return features;
 	} catch (err) {
 		console.error("Failed to fetch page features:", err);

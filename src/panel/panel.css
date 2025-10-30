@@ -173,8 +173,8 @@ body {
     color: #0D1821;
     background-color: #ffffff;
     background-image: 
-        repeating-linear-gradient(to right, rgba(37,150,190,0.085) 0 1px, rgba(37,150,190,0) 1px 28px),
-        repeating-linear-gradient(to bottom, rgba(82,182,154,0.08) 0 1px, rgba(82,182,154,0) 1px 28px),
+        repeating-linear-gradient(to right, rgba(37,150,190,0.1) 0 1px, rgba(37,150,190,0) 1px 28px),
+        repeating-linear-gradient(to bottom, rgba(82,182,154,0.095) 0 1px, rgba(82,182,154,0) 1px 28px),
         linear-gradient(to top, rgba(37,150,190,0.18), rgba(37,150,190,0.12) 25%, rgba(82,182,154,0.10) 45%, rgba(255,255,255,0) 70%),
         radial-gradient(120% 60% at 50% 100%, rgba(37,150,190,0.16) 0%, rgba(255,255,255,0) 65%),
         url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 0 0 0.08 0.22 0.08 0 0'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.22'/></svg>"),

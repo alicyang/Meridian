@@ -256,6 +256,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Set up event listeners
     setupEventListeners();
+
+    // Proactively bind a search session for the currently active tab.
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const isAccessible = tab?.url.startsWith("http://") || tab?.url.startsWith("https://") || tab?.url.startsWith("file://");
+        const hasPermission = await chrome.permissions.contains({ origins: [tab?.url] });
+        if (!/^https?:\/\//.test(tab?.url) || !(isAccessible && hasPermission)) {
+            smartSearchDiv.style.display = "none";
+            notAvailableDiv.style.display = "block";
+        } else {
+            sessionIsReady = false;
+            await setSearchSession(tab.url);
+            sessionIsReady = true;
+            signalSessionReady();
+        }
+    } catch (e) {
+        // ignore; background will still send SWAP_SEARCH_SESSION
+    }
 });
 
 // Load user settings from storage
