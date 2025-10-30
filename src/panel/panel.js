@@ -20,19 +20,34 @@ let modelIsBusy = false; // should be checked before feeding new input into mode
 
 const numMatches = 30;
 
+let _sessionReadyWaiters = [];
+let _modelReadyWaiters = [];
+let _modelIdleWaiters = [];
+
+function waitSessionReady() {
+    return sessionIsReady ? Promise.resolve() : new Promise(r => _sessionReadyWaiters.push(r));
+}
+function signalSessionReady() {
+    const w = _sessionReadyWaiters; _sessionReadyWaiters = []; w.forEach(r => r());
+}
+function waitModelReady() {
+    return searchModel ? Promise.resolve() : new Promise(r => _modelReadyWaiters.push(r));
+}
+function signalModelReady() {
+    const w = _modelReadyWaiters; _modelReadyWaiters = []; w.forEach(r => r());
+}
+function waitModelIdle() {
+    return !modelIsBusy ? Promise.resolve() : new Promise(r => _modelIdleWaiters.push(r));
+}
+function signalModelIdle() {
+    const w = _modelIdleWaiters; _modelIdleWaiters = []; w.forEach(r => r());
+}
+
 // Chat message helpers
 function addMessage(content, type) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}`;
     messageDiv.textContent = content;
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function addAssistantMessage(content) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message assistant';
-    messageDiv.innerHTML = content;
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -76,13 +91,18 @@ async function main() {
             {
                 role: "system",
                 content:
-                    "You are a helpful and friendly assistant who understands that the user may not be a native English speaker." +
-                    "You will use context provided to you about the webpage a user is currently on to craft concise and most likely responses.",
+                    "You are a helpful, friendly assistant. The user may not be a native English speaker. " +
+                    "Always provide concise, actionable directions the user can follow. " +
+                    "When you choose a link, print its direct URL on its own line as: Link: <URL>. " +
+                    "Prefer 4-5 most relevant items and avoid redundancy. " +
+                    "If information is insufficient, say what to click or search next. " +
+                    "Keep responses short and easy to scan.",
             },
         ],
-        expectedInputs: [{ type: "text", languages: ["en"] }],
+        expectedInputs: [{ type: "text", languages: ["en", "ja", "es"] }],
         expectedOutputs: [{ type: "text", languages: ["en"] }],
     });
+    signalModelReady();
 }
 
 // Handle Enter key press
@@ -123,9 +143,7 @@ async function handleSubmit() {
 
     try {
         // Fetch embeddings 
-        while (!sessionIsReady) {
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
+        await waitSessionReady();
         let resp = await sendMessageAsync({ type: "FETCH_DB_EMBEDDING", url: currSearchURL });
         const storedEmbeddings = resp.embeddings;
 
@@ -150,17 +168,13 @@ async function handleSubmit() {
         });
 
         // Use search session 
-        while (modelIsBusy) {
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
+        await waitModelIdle();
         modelIsBusy = true;
         const stream = currSearchSession.promptStreaming([
             { role: "user", content: inputValue },
             {
                 role: "assistant",
-                content: `I will answer the user's question based on the following top matches:
-                    \n${JSON.stringify(topMatches)}\n
-                    I will select the top 3-6 most relevant options and provide concise explanations.`
+                content: `Context (JSON):\n${JSON.stringify(topMatches)}`
             },
         ]);
 
@@ -180,6 +194,7 @@ async function handleSubmit() {
     } finally {
         submitBtn.disabled = false;
         modelIsBusy = false;
+        signalModelIdle();
         assistantLoaderContainer.style.display = "none";
         assistantLoader.style.display = "none";
     }
@@ -195,9 +210,7 @@ async function setSearchSession(url) {
     let searchSession = searchSessionCache.get(url);
     if (searchSession == null) {
         console.log(`[INFO] Starting new search session for tab: ${url}`);
-        while (searchModel == null) {
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
+        await waitModelReady();
         searchSession = await searchModel.clone();
         searchSessionCache.set(url, searchSession);
         
@@ -210,9 +223,7 @@ async function setSearchSession(url) {
         updateCacheAccess(url);
     }
     
-    while (modelIsBusy) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-    }
+    await waitModelIdle();
     currSearchSession = searchSession
     currSearchURL = url;
 }
@@ -228,6 +239,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             addMessage("Hello! I can help you search and understand content on this page. What would you like to know?", 'assistant');
             await setSearchSession(message.url);
             sessionIsReady = true;
+            signalSessionReady();
             break;
         case "SEARCHING_UNAVAILABLE":
             smartSearchDiv.style.display = "none";

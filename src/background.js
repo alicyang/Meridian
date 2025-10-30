@@ -80,6 +80,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 	}
 });
 
+
 chrome.tabs.onRemoved.addListener((tabId) => {
 	if (db) {
 		db.embeddings.where("tabId").equals(tabId).delete();
@@ -253,7 +254,7 @@ async function processNewTab(tab) {
 		const features = await getPageFeatures(tab);
 		const embeddings = await embedFeatures(features);
 		// TODO: pass in features entirely if upgrading to tier 1 
-		await saveEmbeddings(features.links, tab.id);
+        await saveEmbeddings([...features.links, ...features.headers], tab.id);
 	}
 }
 
@@ -270,28 +271,52 @@ async function getPageFeatures(tab) {
 		const [res] = await chrome.scripting.executeScript({
 			target: { tabId: tab.id },
 			func: (tabUrl) => {
-				const links = Array.from(document.querySelectorAll("a[href]"))
-					.map(a => ({
-						type: "link",
-						content: {
-							text: a.innerText.trim(),
-							href: a.href
-						},
-						url: tabUrl
-					}))
+                const links = Array.from(document.querySelectorAll("a[href]"))
+                    .map(a => {
+                        const r = a.getBoundingClientRect();
+                        const top = (r?.top ?? 0) + window.scrollY;
+                        return {
+                            type: "link",
+                            content: {
+                                text: a.innerText.trim(),
+                                href: a.href,
+                                top
+                            },
+                            url: tabUrl
+                        };
+                    })
 					.filter((l) => l.content.text.trim().length > 0);
+                // Deduplicate links by normalized href
+                const linkSeen = new Set();
+                const dedupLinks = [];
+                for (const l of links) {
+                    const key = (l.content.href || '').replace(/\/+$/, '');
+                    if (!linkSeen.has(key)) { linkSeen.add(key); dedupLinks.push(l); }
+                }
 
-				const headers = Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, h6"))
-					.map(h => ({
-						type: "header",
-						content: {
-							level: h.tagName,
-							text: h.innerText.trim()
-						},
-						url: tabUrl
-					}))
+                const headers = Array.from(document.querySelectorAll("h1, h2, h3"))
+                    .map(h => {
+                        const r = h.getBoundingClientRect();
+                        const top = (r?.top ?? 0) + window.scrollY;
+                        return {
+                            type: "header",
+                            content: {
+                                level: h.tagName,
+                                text: h.innerText.trim(),
+                                top
+                            },
+                            url: tabUrl
+                        };
+                    })
 					.filter((h) => h.content.text.trim().length > 0);
-				return { links, headers };
+                // Deduplicate headers by level+text
+                const headSeen = new Set();
+                const dedupHeaders = [];
+                for (const h of headers) {
+                    const key = `${h.content.level}|${h.content.text}`;
+                    if (!headSeen.has(key)) { headSeen.add(key); dedupHeaders.push(h); }
+                }
+                return { links: dedupLinks, headers: dedupHeaders };
 			},
 			args: [tab.url]
 		});
@@ -311,7 +336,7 @@ async function getPageFeatures(tab) {
 
 // embed PageFeatures with Gemini Embeddings API 
 async function embedFeatures(features) {
-	const linkTexts = features.links.map(l => l.content.text);
+    const linkTexts = features.links.map(l => `${l.content.text} ${l.content.href}`.trim());
 	const headerTexts = features.headers.map(h => h.content.text);
 
 	async function embedInBatches(contents) {
@@ -329,7 +354,7 @@ async function embedFeatures(features) {
 				console.error("Embedding request failed:", response.statusText);
 				continue;
 			}
-			const data = await response.json();
+            const data = await response.json();
 			if (!data.embeddings) {
 				console.error("Invalid embedding response:", data);
 				continue;
@@ -373,7 +398,7 @@ async function saveEmbeddings(features, tabId) {
 				url: features[i].url,
 				type: features[i].type,
 				content: JSON.stringify(features[i].content),
-				embedding: JSON.stringify(features[i]._embedding),
+            embedding: JSON.stringify(features[i].embedding),
 				timestamp: Date.now(),
 				tabId: tabId,
 			});

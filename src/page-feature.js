@@ -6,15 +6,19 @@ export default class PageFeature {
         this._embedding = embedding;
     }
 
+    get embedding() {
+        return this._embedding;
+    }
+
     set embedding(embedding) {
         this._embedding = embedding;
     }
 
     toJSON() {
-        return { type: this.type, data: this.data, url: this.url, embedding: this.embedding};
+        return { type: this.type, content: this.content, url: this.url, embedding: this._embedding };
     }
 
     static fromJSON(obj) {
-        return new PageFeature(obj.type, obj.data, obj.url, obj.embedding);
+        return new PageFeature(obj.type, obj.content, obj.url, obj.embedding);
     }
 }

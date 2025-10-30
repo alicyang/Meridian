@@ -2,13 +2,12 @@ console.log("Content script starting...");
 
 // Utility functions (copied from utils.js to avoid module issues)
 function cosineSimilarity(a, b) {
-    let dot = 0, normA = 0, normB = 0;
-    for (let i = 0; i < a.length; i++) {
-        dot += a[i] * b[i];
-        normA += a[i] ** 2;
-        normB += b[i] ** 2;
-    }
-    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    const va = normalizeEmbedding(a || []);
+    const vb = normalizeEmbedding(b || []);
+    const len = Math.min(va.length, vb.length);
+    let dot = 0;
+    for (let i = 0; i < len; i++) dot += va[i] * vb[i];
+    return dot; // unit vectors → dot == cosine
 }
 
 function sendMessageAsync(message) {
@@ -18,6 +17,17 @@ function sendMessageAsync(message) {
             else resolve(response);
         });
     });
+}
+
+function normalizeEmbedding(vec) {
+    if (!Array.isArray(vec) || vec.length === 0) return vec || [];
+    let sum = 0;
+    for (let i = 0; i < vec.length; i++) sum += vec[i] * vec[i];
+    const norm = Math.sqrt(sum) || 1;
+    if (norm === 1) return vec.slice();
+    const out = new Array(vec.length);
+    for (let i = 0; i < vec.length; i++) out[i] = vec[i] / norm;
+    return out;
 }
 
 const widgetHTML = `
@@ -31,7 +41,7 @@ const widgetHTML = `
             <div id="widget-header">
                 <div class="search-container">
                     <input type="text" id="widget-input" placeholder="Search in page...">
-                    <button id="widget-search" class="search-btn">Search</button>
+                    <button id="widget-search" class="search-btn" aria-label="Search">Search</button>
                 </div>
                 <div class="widget-buttons">
                     <button id="widget-prev" class="widget-btn">Prev</button>
@@ -279,8 +289,8 @@ function navigateToMatch(direction) {
     
     const match = searchMatches[currentMatchIndex];
     const content = JSON.parse(match.content);
-    
-    const element = findElementByText(content.text, match.type);
+    console.log(match);
+    const element = findElementByText(content.text, match.type, content.href);
     if (element) {
         // Add highlighting class
         element.classList.add('search-match');
@@ -306,22 +316,19 @@ function clearHighlights() {
     highlighted.forEach(el => el.classList.remove('search-match'));
 }
 
-function findElementByText(text, type) {
+function findElementByText(text, type, href) {
     if (type === 'link') {
-        return Array.from(document.querySelectorAll('a')).find(a => 
-            a.innerText.trim() === text
-        );
+        const byHref = href ? document.querySelector(`a[href='${CSS.escape(href)}']`) : null;
+        if (byHref) return byHref;
+        return Array.from(document.querySelectorAll('a')).find(a => a.innerText.trim() === text);
     } else if (type === 'header') {
-        return Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).find(h => 
-            h.innerText.trim() === text
-        );
+        return Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).find(h => h.innerText.trim() === text);
     }
     return null;
 }
 
 console.log("Document ready state:", document.readyState);
 
-// Try multiple injection strategies
 if (document.readyState === 'loading') {
     console.log("Document still loading, waiting for DOMContentLoaded");
     document.addEventListener('DOMContentLoaded', () => {
@@ -333,7 +340,6 @@ if (document.readyState === 'loading') {
     injectWidget();
 }
 
-// Also try after a short delay to catch dynamic content
 setTimeout(() => {
     console.log("Timeout injection attempt");
     injectWidget();
