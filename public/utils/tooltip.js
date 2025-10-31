@@ -316,4 +316,5 @@ if (typeof window !== "undefined") {
   window.showInlineExplanationTooltip = showInlineExplanationTooltip;
   window.showInlineLoadingTooltip = showInlineLoadingTooltip;
   window.showInlineErrorTooltip = showInlineErrorTooltip;
+  window.removeExistingTooltip = removeExistingTooltip;
 }

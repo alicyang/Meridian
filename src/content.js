@@ -424,24 +424,38 @@ function openPDFInViewer(pdfUrl) {
     chrome.runtime.sendMessage({
         action: "openPdfViewer",
         pdfUrl
-      });
-    
+    }).catch(err => console.error('Error opening PDF viewer:', err));
+}
+
+// Check if URL is a PDF
+function isPdfUrl(url) {
+    if (!url) return false;
+    const lowerUrl = url.toLowerCase();
+    // Check for .pdf extension (handles query params too)
+    return lowerUrl.includes('.pdf');
 }
 
 // Intercept default PDF function when side panel open
+// Use capture phase to catch events early, before navigation
 document.addEventListener('click', async (event) => {
     const target = event.target;
     const link = target.closest('a');
   
     if (link && link.href) {
-        const result = await chrome.storage.sync.get(['analyzePDFs']);
-        if (result.analyzePDFs && link.href.toLowerCase().endsWith('.pdf')) {
-          event.preventDefault();
-          event.stopPropagation();
-          openPDFInViewer(link.href);
+        try {
+            const result = await chrome.storage.sync.get(['analyzePDFs']);
+            // Default to true if not set (matches panel.js default behavior)
+            if (result.analyzePDFs !== false && isPdfUrl(link.href)) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                openPDFInViewer(link.href);
+            }
+        } catch (error) {
+            console.error('Error checking PDF setting:', error);
         }
-      }
-})
+    }
+}, true); // Use capture phase to intercept early
 
 async function handleInlineExplanation(text) {
     try {

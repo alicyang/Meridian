@@ -219,40 +219,58 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 						const text = (message.text || '').trim();
 						if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
 
+						// send response back to PDF viewer
+						// Handle both direct messages from viewer and messages from side panel
+						let targetTabId = null;
+						if (sender.tab && sender.tab.id) {
+							targetTabId = sender.tab.id;
+							// Show loading tooltip immediately for PDF viewer
+							chrome.tabs.sendMessage(targetTabId, {
+								action: "showInlineLoadingTooltip",
+								text
+							}).catch(() => {});
+						} else {
+							// Message came from side panel - query active tab
+							try {
+								const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+								if (activeTab && activeTab.url.startsWith('chrome-extension://')) {
+									targetTabId = activeTab.id;
+									// Show loading tooltip immediately
+									chrome.tabs.sendMessage(targetTabId, {
+										action: "showInlineLoadingTooltip",
+										text
+									}).catch(() => {});
+								}
+							} catch (e) {
+								console.error('Failed to get active tab:', e);
+							}
+						}
+
 						// using existing AI session
 						const session = await getNanoSession();
 						const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
 
-					const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
-
-					// send response back to PDF viewer
-					// Handle both direct messages from viewer and messages from side panel
-					let targetTabId = null;
-					if (sender.tab && sender.tab.id) {
-						targetTabId = sender.tab.id;
-					} else {
-						// Message came from side panel - query active tab
-						try {
-							const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-							if (activeTab && activeTab.url.startsWith('chrome-extension://')) {
-								targetTabId = activeTab.id;
-							}
-						} catch (e) {
-							console.error('Failed to get active tab:', e);
+						const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
+					
+						if (targetTabId) {
+							chrome.tabs.sendMessage(targetTabId, {
+								action: "showExplanation",
+								text,
+								explanation: explanation
+							}).catch(err => console.error('Failed to send message to PDF viewer:', err));
 						}
-					}
 					
-					if (targetTabId) {
-						chrome.tabs.sendMessage(targetTabId, {
-							action: "showExplanation",
-							text,
-							explanation: explanation
-						}).catch(err => console.error('Failed to send message to PDF viewer:', err));
-					}
-					
-					sendResponse({ success: true, explanation: explanation, text: text });
+						sendResponse({ success: true, explanation: explanation, text: text });
 					} catch (err) {
 						console.error('PDF explainText error:', err);
+						// Try to show error tooltip in PDF viewer
+						if (targetTabId) {
+							chrome.tabs.sendMessage(targetTabId, {
+								action: "showInlineErrorTooltip",
+								text,
+								error: err?.message || 'Unknown error'
+							}).catch(() => {});
+						}
 						sendResponse({ success: false, error: err?.message || 'Unknown error' });
 					}
 				})();
@@ -581,7 +599,7 @@ async function getNanoSession() {
 					🧠 Key Words  
 					List any difficult words or phrases from the original text with simple definitions.  
 					Use this format:  
-					- "word or phrase" = simple definition
+					- "word or phrase" simple definition
 
 					Do not include any sections beyond this format.
 

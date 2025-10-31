@@ -135,7 +135,7 @@ window.addEventListener('resize', async () => {
 // ------------------------------
 // Listen for responses from background script
 // ------------------------------
-chrome.runtime.onMessage.addListener((request) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'showInlineLoadingTooltip') {
     if (window.showInlineLoadingTooltip) {
       window.showInlineLoadingTooltip(request.text);
@@ -165,6 +165,13 @@ chrome.runtime.onMessage.addListener((request) => {
     const selectedText = window.getSelection().toString().trim();
     sendResponse({ text: selectedText });
     return true; 
+  }
+  
+  // Handle error tooltip
+  if (request.action === 'showInlineErrorTooltip') {
+    if (window.showInlineErrorTooltip) {
+      window.showInlineErrorTooltip(request.text, request.error);
+    }
   }
   
   return false;
