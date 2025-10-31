@@ -143,9 +143,15 @@ document.addEventListener('mouseup', () => {
 // Listen for responses from background script
 // ------------------------------
 chrome.runtime.onMessage.addListener((request) => {
-  if (request.action === 'showExplanation') {
+  if (request.action === 'showInlineLoadingTooltip') {
+    if (window.showInlineLoadingTooltip) {
+      window.showInlineLoadingTooltip(request.text);
+    }
+  } else if (request.action === 'showExplanation') {
     console.log('Received explanation:', request.explanation);
-    window.showInlineExplanationTooltip(request.text, request.explanation);
+    if (window.showInlineExplanationTooltip) {
+      window.showInlineExplanationTooltip(request.text, request.explanation);
+    }
   }
 });
 

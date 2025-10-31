@@ -368,16 +368,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
       case 'showInlineExplanation':
         console.log('Showing inline explanation for:', request.text);
+        if (window.showInlineLoadingTooltip) {
+          window.showInlineLoadingTooltip(request.text);
+        }
         handleInlineExplanation(request.text);
         break;
         case 'showInlineLoadingTooltip':
           console.log('Showing inline loading tooltip for:', request.text);
-          showInlineLoadingTooltip(request.text);
+          if (window.showInlineLoadingTooltip) {
+            window.showInlineLoadingTooltip(request.text);
+          }
           break;
     
         case 'showInlineExplanationTooltip':
           console.log('Showing inline explanation tooltip for:', request.text);
-          showInlineExplanationTooltip(request.text, request.explanation);
+          if (window.showInlineExplanationTooltip) {
+            window.showInlineExplanationTooltip(request.text, request.explanation);
+          }
           break;
         
         case 'getStoredSelection':
@@ -387,7 +394,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
       case 'showInlineErrorTooltip':
           console.log('Showing inline error tooltip for:', request.text);
-          showInlineErrorTooltip(request.text, request.error);
+          if (window.showInlineErrorTooltip) {
+            window.showInlineErrorTooltip(request.text, request.error);
+          }
           break;
       
       case 'performWidgetSearch':
@@ -436,26 +445,13 @@ document.addEventListener('click', async (event) => {
 
 async function handleInlineExplanation(text) {
     try {
-      const language = await getCurrentLanguage();
-      chrome.runtime.sendMessage({
-        action: 'explainText',
-        text: text,
-        language: language
-      });
-    } catch (error) {
-      console.error('Error getting language or sending message:', error);
-      // Fallback without language
       chrome.runtime.sendMessage({
         action: 'explainText',
         text: text
       });
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
-}
-
-// Add helper function:
-async function getCurrentLanguage() {
-    const result = await chrome.storage.sync.get(['targetLanguage']);
-    return result.targetLanguage || 'en';
 }
 
 // Clean up tooltips when page changes (click outside to dismiss)

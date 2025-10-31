@@ -1,6 +1,5 @@
 // vite.config.js
 import { defineConfig } from 'vite';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
   build: {
@@ -31,16 +30,4 @@ export default defineConfig({
     sourcemap: true,
     emptyOutDir: true,
   },
-
-  plugins: [
-    viteStaticCopy({
-      targets: [
-        {
-          // Copy viewer HTML, CSS, and PDF.js files (excluding viewer-init.js which is bundled)
-          src: ['src/pdf_viewer/viewer.html', 'src/pdf_viewer/*.css', 'src/pdf_viewer/*.mjs'],
-          dest: 'pdf_viewer',
-        },
-      ],
-    }),
-  ],
 });

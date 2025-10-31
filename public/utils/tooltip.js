@@ -19,6 +19,11 @@ function showInlineLoadingTooltip(text) {
     selectedText = text;
     removeExistingTooltip();
 
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+        lastSelectionRect = selection.getRangeAt(0).getBoundingClientRect();
+    }
+
     currentTooltip = createInlineTooltip(`
     <div class="meridian-inline-tooltip loading">
       <div class="inline-tooltip-header">
@@ -32,9 +37,10 @@ function showInlineLoadingTooltip(text) {
     </div>
   `);
 
+    positionInlineTooltip();
 }
 
-function showInlineExplanationTooltip(originalText, explanation) {
+async function showInlineExplanationTooltip(originalText, explanation) {
     removeExistingTooltip();
 
     currentTooltip = createInlineTooltip(`
@@ -48,9 +54,9 @@ function showInlineExplanationTooltip(originalText, explanation) {
           <strong>Selected text:</strong>
           <p>"${originalText}"</p>
         </div>
-        <div class="explanation-section">
+        <div class="explanation-box">
           <strong>Explanation:</strong>
-          <p>${formatTextForTooltip(explanation)}</p>
+          <div class="explanation-content"></div>
         </div>
       </div>
       <div class="inline-tooltip-footer">
@@ -58,6 +64,23 @@ function showInlineExplanationTooltip(originalText, explanation) {
       </div>
     </div>
   `);
+
+    // Format explanation with smd if available
+    const explanationContent = currentTooltip.querySelector('.explanation-content');
+    if (explanationContent) {
+        try {
+            // Dynamically import smd.js
+            const smdModule = await import(chrome.runtime.getURL('utils/smd.js'));
+            const renderer = smdModule.default_renderer(explanationContent);
+            const parser = smdModule.parser(renderer);
+            smdModule.parser_write(parser, explanation);
+            smdModule.parser_end(parser);
+        } catch (error) {
+            // Fallback to plain text if smd fails
+            console.warn('Failed to load smd.js, using plain text:', error);
+            explanationContent.innerHTML = formatTextForTooltip(explanation);
+        }
+    }
 
     setupInlineTooltipEventListeners();
     positionInlineTooltip();

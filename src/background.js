@@ -4,21 +4,7 @@ const EMBED_BATCH_URL = "https://embedbatch-fgq65muclq-uc.a.run.app/";
 
 // shared states
 let db = null;
-let sidePanelOpen = false;
 const processingUrls = new Set();
-
-// --- Prevent Chrome message channel warnings ---
-function handleAsync(fn) {
-	return (message, sender, sendResponse) => {
-	  Promise.resolve(fn(message, sender))
-		.then((res) => sendResponse(res))
-		.catch((err) => {
-		  console.error("Handler error:", err);
-		  sendResponse({ success: false, error: err?.message || "Unknown error" });
-		});
-	  return true; // keep channel open asynchronously
-	};
-  }
 
 // ensure IndexedDB (Dexie) is initialized before any use
 async function ensureDb() {
@@ -167,8 +153,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     const result = await session.prompt([
                         {
                             role: 'user',
-                            content: `
-                                Please explain the following text using very simple language in the language of the speaker's choosing.  
+							content: `
+                                Please explain the following text using very simple English.  
                                 Use the format described above — start with an explanation, then give a list of challenging words with definitions.
 
                                 Here is the text:
@@ -202,9 +188,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 			})();
 			return true;
 		case "getSettings":
-			chrome.storage.sync.get(['targetLanguage', 'preferredAI'], (result) => {
+			chrome.storage.sync.get(['preferredAI'], (result) => {
 				sendResponse({
-					targetLanguage: result.targetLanguage || 'en',
 					preferredAI: result.preferredAI || 'local'
 				});
 			});
@@ -256,15 +241,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 						const text = (message.text || '').trim();
 						if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
 
-						// Get language preference
-						const settings = await chrome.storage.sync.get(['targetLanguage']);
-						const language = settings.targetLanguage || 'en';
-
-						// Clear existing session if language changed
-						if (nanoSession && nanoSession.currentLanguage !== language) {
-							clearNanoSession();
-						}
-
 						// using existing AI session
 						const session = await getNanoSession();
 						const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
@@ -274,6 +250,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 						// send response back to PDF viewer
 						chrome.tabs.sendMessage(sender.tab.id, {
 							action: "showExplanation",
+							text,
 							explanation: explanation
 						});
 						sendResponse({ success: true, explanation: explanation });
@@ -288,6 +265,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 					try {
 						const text = (message.text || '').trim();
 						if (!text) { sendResponse({ success: false, error: 'No text provided' }); return; }
+
+						// Show loading tooltip immediately for regular web pages
+						if (sender.tab && sender.tab.id) {
+							chrome.tabs.sendMessage(sender.tab.id, {
+								action: "showInlineLoadingTooltip",
+								text
+							}).catch(() => {});
+						}
 
 						const session = await getNanoSession();
 						const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
@@ -554,14 +539,6 @@ async function getNanoSession() {
 
 	sessionCreating = true;
 	try {
-		// Get user's language preference
-		const settings = await chrome.storage.sync.get(['targetLanguage']);
-		const targetLanguage = settings.targetLanguage || 'en';
-
-		// Validate language (only support en, ja, es)
-		const supportedLanguages = ['en', 'ja', 'es'];
-		const language = supportedLanguages.includes(targetLanguage) ? targetLanguage : 'en';
-
 		if (typeof LanguageModel === 'undefined') {
 			throw new Error('LanguageModel is undefined in the service worker. The built-in API may not be available here.');
 		}
@@ -580,47 +557,46 @@ async function getNanoSession() {
 		nanoSession = await LanguageModel.create({
 			// language-specific inputs/outputs
 			expectedInputs: [
-				{ type: "text", languages: ["en", language] } // System prompt in English, user input in selected language
+				{ type: "text", languages: ["en"] }
 			],
 			expectedOutputs: [
-				{ type: "text", languages: [language] } // Output in selected language
+				{ type: "text", languages: ["en"] }
 			],
 			// system prompt
 			initialPrompts: [
 				{
 					role: 'system',
 					content: `
-          You are a patient and clear AI assistant who explains complex or difficult text in **very simple English**. Your job is to make sure even someone with **limited English skills** can understand.
-          
-          🔹 Use short, clear sentences.
-          🔹 Break long ideas into smaller parts.
-          🔹 Avoid big words or advanced grammar.
-          🔹 Explain hard words or phrases in parentheses.
-          🔹 Use easy examples when helpful.
-          🔹 Do not include any extra or off-topic information.
-          
-          🔸 Use this output format:
-          
-          📘 **Explanation**  
-          Write a short and clear explanation here using simple language of user's choosing, 2-4 sentences maximum.  
-          Break things into steps if needed. Use line breaks for each idea.End this section with **two line breaks**.
-          
-          🧠 **Challenging Words**  
-          List any difficult words or phrases from the original text with simple definitions.  
-          Use this format:
-          - "word or phrase **in ENGLISH** (no matter what the output language preference is)" = simple definition
-          
-          Do not include any sections beyond this format.
+					You are a patient and clear AI assistant who explains complex or difficult text in very simple English. Your job is to make sure even someone with limited English skills can understand.
 
-          Here is an example of the output format:
-          📘 **Explanation**  
-          The Earth goes around the Sun.  
-          It takes one year to complete a full circle.  
-          This is called Earth's orbit.
+					- Use short, clear sentences.
+					- Break long ideas into smaller parts.
+					- Avoid big words or advanced grammar.
+					- Explain hard words or phrases in parentheses.
+					- Use easy examples when helpful.
+					- Do not include any extra or off-topic information.
 
-          🧠 **Challenging Words**  
-          - "orbit" = the path something follows around another thing
-          `.trim()
+					Use this output format:
+
+					Write a short and clear explanation here using simple English, 2-4 sentences maximum.  
+					Break things into steps if needed. Use line breaks for each idea. End this section with two line breaks.
+
+					🧠 Key Words  
+					List any difficult words or phrases from the original text with simple definitions.  
+					Use this format:  
+					- "word or phrase" = simple definition
+
+					Do not include any sections beyond this format.
+
+					Here is an example of the output format:
+
+					The Earth goes around the Sun.  
+					It takes one year to complete a full circle.  
+					This is called Earth's orbit.
+
+					🧠 Key Words  
+					- **"orbit"** The path something follows around another thing
+					`
 				}
 			],
 			parameters: {
@@ -668,7 +644,7 @@ async function handleExplainTextRequest(request, sender, sendResponse) {
 			const session = await getNanoSession(); // create or reuse model session
 
 			const promptText = `
-        Please explain the following text using simple words in whatever language the user chooses:
+        Please explain the following text using simple English:
         "${text}"
       `.trim();
 

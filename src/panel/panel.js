@@ -169,7 +169,7 @@ async function main() {
                 `
             }
         ],
-        expectedInputs: [{ type: "text", languages: ["en", "ja", "es"] }],
+        expectedInputs: [{ type: "text", languages: ["en", "es", "ja"] }],
         expectedOutputs: [{ type: "text", languages: ["en"] }],
     });
     signalModelReady();
@@ -386,17 +386,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadSettings() {
     try {
       const result = await chrome.storage.sync.get([
-        'targetLanguage',
         'preferredAI',
         'textsExplained',
         'analyzePDFs'
       ]);
-      
-      // Set target language
-      const targetLanguageSelect = document.getElementById('targetLanguage');
-      if (targetLanguageSelect) {
-        targetLanguageSelect.value = result.targetLanguage || 'en';
-      }
   
       // Set PDF analysis toggle
       const analyzePDFsCheckbox = document.getElementById('analyzePDFs');
@@ -411,14 +404,6 @@ async function loadSettings() {
 
 // Set up event listeners
 function setupEventListeners() {
-    // Target language change
-    const targetLanguageSelect = document.getElementById('targetLanguage');
-    if (targetLanguageSelect) {
-      targetLanguageSelect.addEventListener('change', async (e) => {
-        await saveSetting('targetLanguage', e.target.value);
-      });
-    }
-  
     // PDF analysis toggle
     const analyzePDFsCheckbox = document.getElementById('analyzePDFs');
     if (analyzePDFsCheckbox) {
@@ -524,15 +509,6 @@ async function saveSetting(key, value) {
     }
 }
 
-// Handle popup close
-window.addEventListener('beforeunload', () => {
-    // Save any pending changes
-    const targetLanguage = document.getElementById('targetLanguage').value;
-    
-    chrome.storage.sync.set({
-      targetLanguage: targetLanguage,
-    });
-});
 
 
 
