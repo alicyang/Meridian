@@ -31,7 +31,7 @@
     },
     "web_accessible_resources": [
         {
-            "resources": ["pdf_viewer/*"],
+            "resources": ["PDF_VIEWER/*"],
             "matches": ["<all_urls>"]
         },
         {
