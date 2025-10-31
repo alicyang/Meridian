@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>HelpMyMom PDF Viewer</title>
+  <title>Meridian PDF Viewer</title>
 
-  <!-- PDF.js built-in viewer styles (enables selectable text layout) -->
   <link rel="stylesheet" href="./pdf_viewer.css">
-  <!-- PDF tooltips look like webpage tooltips -->
   <link rel="stylesheet" href="../content.css">
 
   <style>
@@ -19,35 +17,19 @@
       height: 100%;
       align-items: center;
     }
-    #pdf-container {
-      width: 100%;
-      height: calc(100vh - 80px);
-      max-width: none;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
+
+    h2 {
       margin-top: 20px;
-      background: white;
-      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      margin-bottom: 10px;
     }
+
     #toolbar {
       display: flex;
       justify-content: space-between;
       width: 90%;
-      margin-top: 10px;
+      margin-bottom: 10px;
     }
-    #page-container {
-    position: relative;
-    width: min(100%, 1100px); /* Fill parent width */
-    height: auto;
-    display: block;
-    overflow: auto;
-    }
-    #pdf-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    }
+
     button {
       padding: 6px 12px;
       font-size: 14px;
@@ -57,38 +39,71 @@
       color: white;
       cursor: pointer;
     }
-    .textLayer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 10 !important; /* ensures layer is above canvas */
-    pointer-events: auto; /* makes sure clicks go through */
 
-    /* for aesthetic */
-    background-color: rgba(35, 160, 227, 0.05);
+    #pdf-container {
+      width: 100%;
+      height: calc(100vh - 100px);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: #f0f0f0;
+      overflow: auto;
+    }
+
+    #page-container {
+      position: relative;
+      display: inline-block;
+      background: white;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+    }
+
+    #pdf-canvas {
+      display: block;
+      background: white;
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+
+    .textLayer {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: auto; /* allows selection */
+      user-select: text; /* make spans selectable */
+      background: transparent;
+    }
+
+    .textLayer > span {
+      position: absolute;
+      transform-origin: 0% 0%;
+      white-space: pre;
+      line-height: 1;
+      cursor: text;
+      color: transparent; /* invisible but selectable text */
+      mix-blend-mode: multiply;
     }
   </style>
 </head>
+
 <body>
   <h2>Meridian PDF Viewer</h2>
+
   <div id="toolbar">
     <button id="prev">Previous</button>
     <button id="next">Next</button>
     <span id="page-info"></span>
   </div>
-  <!-- adding text layer -->
+
   <div id="pdf-container">
-    <div id="page-container" style="position: relative;" class="pdfViewer">
+    <div id="page-container">
       <canvas id="pdf-canvas"></canvas>
-      <div id="text-layer" class="textLayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+      <div id="text-layer" class="textLayer"></div>
     </div>
   </div>
 
-  <!-- PDF.js library -->
-  <script src="../../public/utils/tooltip.js"></script>
+  <script src="../utils/tooltip.js"></script>
   <script type="module" src="./viewer-init.js"></script>
-</body>
 </body>
 </html>

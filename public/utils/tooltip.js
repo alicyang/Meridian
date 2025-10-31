@@ -63,36 +63,6 @@ function showInlineExplanationTooltip(originalText, explanation) {
     positionInlineTooltip();
 }
 
-function showInlineErrorTooltip(text, errorMessage) {
-    removeExistingTooltip();
-
-    currentTooltip = createInlineTooltip(`
-    <div class="meridian-inline-tooltip error">
-      <div class="inline-tooltip-header">
-        <div class="inline-tooltip-title">Error</div>
-        <div class="inline-tooltip-subtitle">Meridian AI</div>
-      </div>
-      <div class="inline-tooltip-content">
-        <p>${errorMessage}</p>
-        <div class="help-section">
-          <strong>Try this instead:</strong>
-          <ol>
-            <li>Use the extension popup to download the AI model first</li>
-            <li>Make sure you have Chrome 126+ with AI features enabled</li>
-            <li>Try again after the model is downloaded</li>
-          </ol>
-        </div>
-      </div>
-      <div class="inline-tooltip-footer">
-        <button class="inline-close-btn" id="inline-close-btn">×</button>
-      </div>
-    </div>
-  `);
-
-    setupInlineTooltipEventListeners();
-    positionInlineTooltip();
-}
-
 
 function showInlineErrorTooltip(text, errorMessage){
   removeExistingTooltip();
@@ -322,4 +292,5 @@ function setupTooltipEventListeners() {
 if (typeof window !== "undefined") {
   window.showInlineExplanationTooltip = showInlineExplanationTooltip;
   window.showInlineLoadingTooltip = showInlineLoadingTooltip;
+  window.showInlineErrorTooltip = showInlineErrorTooltip;
 }

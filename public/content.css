@@ -230,3 +230,156 @@
         background: linear-gradient(45deg, rgba(96, 165, 250, 0.3), rgba(59, 130, 246, 0.3));
     }
 }
+
+/* Meridian - Tooltip Styles (Earthy Edition) */
+
+:root {
+    --earth-bg: #f5f0e6;      /* soft beige background */
+    --earth-text: #3b2f2f;    /* deep brown text */
+    --earth-border: #a27b5c;  /* warm clay border */
+    --earth-accent: #6b705c;  /* olive tone for headers/buttons */
+    --earth-light: #e6d5b8;   /* light tan for sections */
+  }
+  
+  /* Tooltip container */
+  .meridian-tooltip-container,
+  .meridian-inline-tooltip-container {
+    position: fixed;
+    z-index: 10000;
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    max-width: 400px;
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  /* Tooltip base */
+  .meridian-tooltip,
+  .meridian-inline-tooltip {
+    background: var(--earth-bg);
+    color: var(--earth-text);
+    border: 1px solid var(--earth-border);
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  /* Header */
+  .tooltip-header,
+  .inline-tooltip-header {
+    background: var(--earth-accent);
+    color: var(--earth-bg);
+    padding: 10px 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  /* Content */
+  .tooltip-content,
+  .inline-tooltip-content {
+    padding: 14px;
+  }
+  
+  /* Section styling */
+  .original-text,
+  .original-text-section {
+    background: var(--earth-light);
+    border-left: 4px solid var(--earth-border);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+  
+  .original-text strong,
+  .original-text-section strong {
+    font-size: 12px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+    color: var(--earth-text);
+    opacity: 0.8;
+  }
+  
+  .original-text p,
+  .original-text-section p,
+  .explanation-text p,
+  .explanation-section p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  
+  /* Buttons */
+  .action-btn,
+  .inline-close-btn,
+  .close-btn {
+    background: var(--earth-accent);
+    color: var(--earth-bg);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .action-btn:hover,
+  .inline-close-btn:hover,
+  .close-btn:hover {
+    background: var(--earth-border);
+  }
+  
+  /* Secondary buttons */
+  .action-btn.secondary {
+    background: var(--earth-light);
+    color: var(--earth-text);
+  }
+  
+  .action-btn.secondary:hover {
+    background: var(--earth-border);
+    color: var(--earth-bg);
+  }
+  
+  /* Footer & help section */
+  .help-section {
+    margin-top: 10px;
+    padding: 10px;
+    border-left: 3px solid var(--earth-border);
+    background: var(--earth-light);
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  
+  /* Loading spinner (minimal version) */
+  .loading-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--earth-light);
+    border-top: 2px solid var(--earth-accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 8px auto;
+  }
+  
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Dark mode */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --earth-bg: #2d2a26;
+      --earth-text: #f5f0e6;
+      --earth-border: #8b6b4a;
+      --earth-accent: #4b6043;
+      --earth-light: #3a332d;
+    }
+  }

@@ -162,6 +162,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             })();
 		}
 	switch (message.action) {
+		case "FETCH_PDF_BYTES":
+			(async () => {
+				try {
+					if (!message.pdfUrl) { sendResponse({ ok: false, error: 'No URL' }); return; }
+					const resp = await fetch(message.pdfUrl);
+					if (!resp.ok) { sendResponse({ ok: false, error: `HTTP ${resp.status}` }); return; }
+					const buf = await resp.arrayBuffer();
+					const bytes = Array.from(new Uint8Array(buf));
+					sendResponse({ ok: true, data: bytes });
+				} catch (e) {
+					console.error("FETCH_PDF_BYTES error:", err);
+					sendResponse({ ok: false, error: e?.message || 'Fetch failed' });
+				}
+			})();
+			return true;
 		case "getSettings":
 			chrome.storage.sync.get(['targetLanguage', 'preferredAI'], (result) => {
 				sendResponse({
@@ -170,6 +185,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 				});
 			});
 			return true;
+		case "openPdfViewer":
+			(async () => {
+				try {
+					if (!message.pdfUrl) return;
+					const viewerUrl = chrome.runtime.getURL("PDF_VIEWER/viewer.html");
+					const fullUrl = `${viewerUrl}?file=${encodeURIComponent(message.pdfUrl)}`;
+					if (sender.tab && sender.tab.id) {
+						chrome.tabs.update(sender.tab.id, { url: fullUrl });
+					} else {
+						chrome.tabs.create({ url: fullUrl });
+					}
+				} catch (e) {
+					console.error('openPdfViewer error:', e);
+				}
+			})();
+			return true;
+			case "FETCH_PDF_BYTES":
+				(async () => {
+					try {
+						if (!message.pdfUrl) {
+							sendResponse({ ok: false, error: "Missing URL" });
+							return;
+						}
+	
+						const resp = await fetch(message.url);
+						if (!resp.ok) {
+							sendResponse({ ok: false, error: `HTTP ${resp.status}` });
+							return;
+						}
+	
+						const arrayBuffer = await resp.arrayBuffer();
+						const bytes = Array.from(new Uint8Array(arrayBuffer)); // transferable-friendly
+	
+						sendResponse({ ok: true, data: bytes });
+					} catch (err) {
+						console.error("FETCH_PDF_BYTES error:", err);
+						sendResponse({ ok: false, error: err.message });
+					}
+				})();
+				return true;
 		case "explainText":
 			if (message.source == "pdf_viewer") {
 				(async () => {
