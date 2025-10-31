@@ -168,7 +168,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 } catch (err) {
                     console.error('EXPLAIN_SELECTION error in background:', err);
                     sendResponse({ success: false, error: err?.message || 'Unknown error' });
-                }
+                } finally {
+					if (!responded) sendResponse({ success: false, error: 'No response sent' });
+				}
             })();
 		}
 	switch (message.action) {
@@ -210,30 +212,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 				}
 			})();
 			return true;
-			case "FETCH_PDF_BYTES":
-				(async () => {
-					try {
-						if (!message.pdfUrl) {
-							sendResponse({ ok: false, error: "Missing URL" });
-							return;
-						}
-	
-						const resp = await fetch(message.url);
-						if (!resp.ok) {
-							sendResponse({ ok: false, error: `HTTP ${resp.status}` });
-							return;
-						}
-	
-						const arrayBuffer = await resp.arrayBuffer();
-						const bytes = Array.from(new Uint8Array(arrayBuffer)); // transferable-friendly
-	
-						sendResponse({ ok: true, data: bytes });
-					} catch (err) {
-						console.error("FETCH_PDF_BYTES error:", err);
-						sendResponse({ ok: false, error: err.message });
-					}
-				})();
-				return true;
 		case "explainText":
 			if (message.source == "pdf_viewer") {
 				(async () => {
@@ -245,15 +223,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 						const session = await getNanoSession();
 						const result = await session.prompt([{ role: 'user', content: `Explain: "${text}"` }]);
 
-						const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
+					const explanation = typeof result === 'string' ? result : result?.toString?.() || JSON.stringify(result);
 
-						// send response back to PDF viewer
-						chrome.tabs.sendMessage(sender.tab.id, {
+					// send response back to PDF viewer
+					// Handle both direct messages from viewer and messages from side panel
+					let targetTabId = null;
+					if (sender.tab && sender.tab.id) {
+						targetTabId = sender.tab.id;
+					} else {
+						// Message came from side panel - query active tab
+						try {
+							const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+							if (activeTab && activeTab.url.startsWith('chrome-extension://')) {
+								targetTabId = activeTab.id;
+							}
+						} catch (e) {
+							console.error('Failed to get active tab:', e);
+						}
+					}
+					
+					if (targetTabId) {
+						chrome.tabs.sendMessage(targetTabId, {
 							action: "showExplanation",
 							text,
 							explanation: explanation
-						});
-						sendResponse({ success: true, explanation: explanation });
+						}).catch(err => console.error('Failed to send message to PDF viewer:', err));
+					}
+					
+					sendResponse({ success: true, explanation: explanation, text: text });
 					} catch (err) {
 						console.error('PDF explainText error:', err);
 						sendResponse({ success: false, error: err?.message || 'Unknown error' });
