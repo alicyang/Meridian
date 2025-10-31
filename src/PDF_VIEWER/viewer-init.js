@@ -126,32 +126,52 @@ window.addEventListener('resize', async () => {
 
 
 // ------------------------------
-// Handle text selection (for your AI logic later)
+// Handle text selection (for button/context menu to use)
 // ------------------------------
-// When the user highlights text, this captures it so you can
-// send it to your AI model for explanation or translation.
-document.addEventListener('mouseup', () => {
-  const selectedText = window.getSelection().toString().trim();
-  if (selectedText) {
-    console.log('User highlighted:', selectedText);
-    // send message to background script
-    chrome.runtime.sendMessage({ action: 'explainText', text: selectedText, source: 'pdf_viewer' });
-  }
-});
+// Text selection is tracked but explanation is only triggered by:
+// 1. "Explain Selected Text" button in side panel
+// 2. Right-click context menu "Explain this text"
 
 // ------------------------------
 // Listen for responses from background script
 // ------------------------------
-chrome.runtime.onMessage.addListener((request) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'showExplanation') {
     console.log('Received explanation:', request.explanation);
     window.showInlineExplanationTooltip(request.text, request.explanation);
   }
-});
-
-chrome.runtime.onMessage.addListener((request, sendResponse) => {
+  
+  // Handle context menu "Explain this text" for PDF viewer
+  if (request.action === 'showInlineExplanation') {
+    const selectedText = request.text || window.getSelection().toString().trim();
+    if (selectedText) {
+      // Trigger explanation flow
+      chrome.runtime.sendMessage({ 
+        action: 'explainText', 
+        text: selectedText, 
+        source: 'pdf_viewer' 
+      });
+    }
+  }
+  
+  // Handle "getSelectedText" request from side panel button
   if (request.action === 'getSelectedText') {
     const selectedText = window.getSelection().toString().trim();
     sendResponse({ text: selectedText });
+    return true; 
+  }
+  
+  return false;
+});
+
+// Clean up tooltips when clicking outside (same as web pages)
+document.addEventListener('click', (e) => {
+  // Find the tooltip container in the DOM
+  const tooltipContainer = document.querySelector('.meridian-inline-tooltip-container, [id^="tooltip"]');
+  if (tooltipContainer && !tooltipContainer.contains(e.target)) {
+    // Click is outside tooltip - remove it
+    if (window.removeExistingTooltip) {
+      window.removeExistingTooltip();
+    }
   }
 });

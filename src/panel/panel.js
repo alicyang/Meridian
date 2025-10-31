@@ -470,11 +470,13 @@ function setupEventListeners() {
   
           // Step 2: Call background to generate explanation
           aiStatus.textContent = 'Sending to AI...';
+          const isPdfViewer = tab.url.startsWith('chrome-extension://');
           const response = await new Promise((resolve, reject) => {
             chrome.runtime.sendMessage(
               {
                 action: 'explainText',
                 text: selectedText,
+                source: isPdfViewer ? 'pdf_viewer' : undefined,
                 useRemote: false
               },
               (res) => {
@@ -486,15 +488,16 @@ function setupEventListeners() {
               }
             );
           });
-  
+
           // Step 3: Show result
           if (response.success) {
             aiStatus.textContent = 'Done.';
             
-            // Show inline tooltip
+            // Show inline tooltip - PDF viewer uses showExplanation, regular pages use showInlineExplanationTooltip
             try {
+              const tooltipAction = isPdfViewer ? "showExplanation" : "showInlineExplanationTooltip";
               await chrome.tabs.sendMessage(tab.id, {
-                action: "showInlineExplanationTooltip",
+                action: tooltipAction,
                 text: selectedText,
                 explanation: response.explanation
               });
