@@ -213,7 +213,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 			(async () => {
 				try {
 					if (!message.pdfUrl) return;
-					const viewerUrl = chrome.runtime.getURL("PDF_VIEWER/viewer.html");
+					const viewerUrl = chrome.runtime.getURL("pdf_viewer/viewer.html");
 					const fullUrl = `${viewerUrl}?file=${encodeURIComponent(message.pdfUrl)}`;
 					if (sender.tab && sender.tab.id) {
 						chrome.tabs.update(sender.tab.id, { url: fullUrl });

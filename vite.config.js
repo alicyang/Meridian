@@ -11,14 +11,19 @@ export default defineConfig({
         background: 'src/background.js',
         content: 'src/content.js',
         panel: 'src/panel/panel.html',
-        // Note: viewer files are copied as static assets below (no bundling)
+        viewer: 'src/pdf_viewer/viewer-init.js',
       },
       output: {
         // Keep file names stable-ish; optional
-        entryFileNames: (chunk) =>
-          chunk.name === 'background' || chunk.name === 'content'
-            ? '[name].js'
-            : 'assets/[name].js',
+        entryFileNames: (chunk) => {
+          if (chunk.name === 'background' || chunk.name === 'content') {
+            return '[name].js';
+          }
+          if (chunk.name === 'viewer') {
+            return 'pdf_viewer/[name].js';
+          }
+          return 'assets/[name].js';
+        },
         assetFileNames: 'assets/[name][extname]',
       },
     },
@@ -31,9 +36,9 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          // Copy everything under src/PDF_VIEWER into dist/PDF_VIEWER
-          src: 'src/PDF_VIEWER/*',
-          dest: 'PDF_VIEWER',
+          // Copy viewer HTML, CSS, and PDF.js files (excluding viewer-init.js which is bundled)
+          src: ['src/pdf_viewer/viewer.html', 'src/pdf_viewer/*.css', 'src/pdf_viewer/*.mjs'],
+          dest: 'pdf_viewer',
         },
       ],
     }),
