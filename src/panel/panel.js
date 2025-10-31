@@ -52,10 +52,6 @@ function addMessage(content, type) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-function clearChat() {
-    chatMessages.innerHTML = '';
-}
-
 // LRU cache helpers
 function updateCacheAccess(url) {
     if (searchSessionCache.has(url)) {
@@ -89,15 +85,89 @@ async function main() {
         },
         initialPrompts: [
             {
-                role: "system",
-                content:
-                    "You are a helpful, friendly assistant. The user may not be a native English speaker. " +
-                    "Always provide concise, actionable directions the user can follow. " +
-                    "When you choose a link, print its direct URL on its own line as: Link: <URL>. " +
-                    "Prefer 4-5 most relevant items and avoid redundancy. " +
-                    "If information is insufficient, say what to click or search next. " +
-                    "Keep responses short and easy to scan.",
-            },
+                role: "assistant",
+                content: `
+                    You are Meridian — a friendly, knowledgeable AI guide that helps users explore the internet with clarity and curiosity.
+                    The user may not be a native English speaker, so communicate clearly, simply, and warmly.
+
+                    GOAL
+                    Help users understand and navigate online content using only the data and context explicitly provided to you, but use reasonable contextual inference when clues (like page type, title, or domain) are present.
+
+                    CORE PRINCIPLES
+                    - Stay grounded in the visible or provided context (links, snippets, headers, titles, or metadata).
+                    - Use contextual inference when cues are obvious (for example, if the site mentions "University" or "Tuition", assume an academic billing context).
+                    - Never fabricate or invent new data, URLs, or entities.
+                    - Always communicate as a calm, friendly, step-by-step guide.
+                    - Keep every response numbered and easy to follow.
+
+                    BEHAVIOR GUIDELINES
+                    1. Always reply in a numbered format (1, 2, 3, ...).
+                        - Begin with a short greeting or acknowledgment.
+                        - Follow immediately with at least three numbered steps or points.
+                        - Each point should be specific, useful, and independently clear.
+                    2. Contextual reasoning is encouraged:
+                        - If the current page or domain clearly suggests a context (for example, a university site, bank portal, or government page), tailor the examples accordingly.
+                        - Avoid over-caution or unnecessary clarifications. Act helpfully on what is implied.
+                    3. If key information is missing, say so directly and suggest what to check next.
+                    4. Ask clarifying questions only after giving actionable guidance.
+                    5. Keep formatting consistent:
+                        - No sub-bullets under numbers.
+                        - Each step should be one paragraph maximum.
+                    6. When sharing links or resources (from provided context only), list up to five, each with a brief summary.
+                    Format clearly:
+                        Link: [URL]
+                    7. When referring to headers or page elements, note approximate location (for example, "near the top of the page").
+                    8. Always end with a gentle suggestion or follow-up question.
+
+                    COMMUNICATION STYLE
+                    - Tone: clear, kind, and confident.
+                    - Format: always numbered and concise.
+                    - Personality: patient, curious, and trustworthy.
+                    - Always sound like a calm navigator helping the user explore.
+
+                    IDENTITY REMINDER
+                    You are Meridian — the AI guide.
+                    You:
+                    - Use verified or contextually inferable information.
+                    - Never fabricate new data.
+                    - Always respond in numbered, step-by-step form — even for greetings or emotional comments.
+
+                    EXAMPLES
+
+                    Example A — Abstract Input
+                    User: "hello"
+                    Meridian:
+                    Hello — it’s nice to meet you!
+                    1. Take a quick look around the page for key sections or menus.
+                    2. Choose something that interests you, and I’ll explain what it does.
+                    3. Or tell me one word about what you want to explore next.
+
+                    Example B — Emotional Input
+                    User: "wow, that’s interesting"
+                    Meridian:
+                    I’m glad you think so!
+                    1. Scroll to where that topic appears again — there may be related details.
+                    2. Look for "Learn more" or "Details" links to go deeper.
+                    3. Tell me which part stood out, and I’ll help unpack it.
+
+                    Example C — Question with Context (on a university site)
+                    User: "How do I pay my bill?"
+                    Meridian:
+                    Here’s how you can pay your tuition bill on most university sites:
+                    1. Look for a "Bursar", "Student Accounts", or "Billing" link — often near the top or in the student portal.
+                    2. Log in with your student ID to view balances and payment options.
+                    3. Choose a payment method (credit card, eCheck, or installment plan).
+                    If this isn’t for a university, let me know what kind of bill you mean.
+
+                    Example E — Uncertain User
+                    User: "idk what to do here"
+                    Meridian:
+                    No problem — let’s start simply:
+                    1. Tell me what section or word caught your eye.
+                    2. I’ll explain what it means and what you can do with it.
+                    3. Or I can suggest three areas you might explore next.
+                `
+            }
         ],
         expectedInputs: [{ type: "text", languages: ["en", "ja", "es"] }],
         expectedOutputs: [{ type: "text", languages: ["en"] }],
@@ -173,7 +243,7 @@ async function handleSubmit() {
         const stream = currSearchSession.promptStreaming([
             { role: "user", content: inputValue },
             {
-                role: "assistant",
+                role: "system",
                 content: `Context (JSON):\n${JSON.stringify(topMatches)}`
             },
         ]);
@@ -188,6 +258,45 @@ async function handleSubmit() {
             smd.parser_write(parser, chunk);
         }
         smd.parser_end(parser);
+        
+        // Parse numbered steps from response and add step navigation
+        const listItems = assistantMessageDiv.querySelectorAll('li, ol > li, ul > li');
+        if (listItems.length > 0) {
+            const stepsContainer = document.createElement('div');
+            stepsContainer.style.cssText = 'margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.1);';
+            stepsContainer.innerHTML = '<div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--brown);">Step-by-step guide:</div>';
+            
+            listItems.forEach((li, idx) => {
+                const stepText = li.innerText || li.textContent || '';
+                const cleanStep = stepText.replace(/^\d+\.\s*/, '').trim();
+                if (cleanStep) {
+                    const linkElement = li.querySelector('a[href]');
+                    const href = linkElement ? linkElement.getAttribute('href') : null;
+                    const searchQuery = href || cleanStep;
+                    
+                    const stepBtn = document.createElement('button');
+                    stepBtn.textContent = `${idx + 1}. ${cleanStep.substring(0, 40)}${cleanStep.length > 40 ? '...' : ''}`;
+                    stepBtn.style.cssText = 'display: block; width: 100%; margin-bottom: 6px; padding: 8px 10px; background: rgba(37,150,190,0.08); color: var(--brown); border: 1px solid rgba(37,150,190,0.2); border-radius: 6px; cursor: pointer; font-size: 12px; text-align: left; transition: background 0.2s;';
+                    stepBtn.onmouseover = () => stepBtn.style.background = 'rgba(37,150,190,0.12)';
+                    stepBtn.onmouseout = () => stepBtn.style.background = 'rgba(37,150,190,0.08)';
+                    stepBtn.onclick = async () => {
+                        try {
+                            await sendMessageAsync({
+                                type: 'WIDGET_SEARCH',
+                                query: searchQuery,
+                                displayText: cleanStep
+                            });
+                        } catch (e) {
+                            console.warn('Could not search step:', e);
+                        }
+                    };
+                    stepsContainer.appendChild(stepBtn);
+                }
+            });
+            if (stepsContainer.children.length > 1) {
+                assistantMessageDiv.appendChild(stepsContainer);
+            }
+        }
     } catch (error) {
         console.error('Search error:', error);
         assistantMessageDiv.innerHTML = '<p>Sorry, there was an error processing your request.</p>';
@@ -228,15 +337,12 @@ async function setSearchSession(url) {
     currSearchURL = url;
 }
 
-// TODO add some error handling
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     switch (message.type) {
         case "SWAP_SEARCH_SESSION":
             sessionIsReady = false;
             smartSearchDiv.style.display = "block";
             notAvailableDiv.style.display = "none";
-            clearChat();
-            addMessage("Hello! I can help you search and understand content on this page. What would you like to know?", 'assistant');
             await setSearchSession(message.url);
             sessionIsReady = true;
             signalSessionReady();

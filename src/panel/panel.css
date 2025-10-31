@@ -1,12 +1,14 @@
 
 
 #extension-panel {
-    width: 300px;
+    width: 100%;
+    max-width: 100%;
     padding: 12px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    box-sizing: border-box;
 }
 
 #smart-search {
@@ -14,12 +16,13 @@
     background-color: #EAF4F4;
     border-color: var(--olive);
     width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    min-width: 330px;
     margin-bottom: 12px;
-    padding: 12px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 #chat-container {
@@ -44,7 +47,7 @@
 }
 
 #user-input {
-    min-height: 40px;
+    min-height: 30px;
     font-size: 14px;
     color: #0D1821;
     font-family: inherit;
@@ -207,7 +210,7 @@ label {
 }
 
 select {
-    width: 100%;
+    width: 300px;
     padding: 8px 10px;
     border-radius: 6px;
     border: 1px solid rgba(0, 0, 0, 0.12);

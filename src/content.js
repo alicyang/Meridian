@@ -385,12 +385,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({text: selectedText});
           break;
     
-        case 'showInlineErrorTooltip':
+      case 'showInlineErrorTooltip':
           console.log('Showing inline error tooltip for:', request.text);
           showInlineErrorTooltip(request.text, request.error);
           break;
+      
+      case 'performWidgetSearch':
+          (async () => {
+              const panel = document.getElementById('widget-panel');
+              const input = document.getElementById('widget-input');
+              if (panel) panel.style.display = 'block';
+              if (input && request.displayText) {
+                  input.value = request.displayText;
+              }
+              await performSearch(request.query);
+              if (searchMatches.length > 0) {
+                  navigateToMatch(1);
+              }
+          })();
+          break;
       default:
-        console.log('Unknown action:', request.action);
+          console.log('Unknown action:', request.action);
         
     }
 });

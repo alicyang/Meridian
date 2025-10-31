@@ -127,6 +127,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 				}
 			})();
 			return true;
+		case "WIDGET_SEARCH":
+			(async () => {
+				try {
+					const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+					if (tab?.id) {
+						chrome.tabs.sendMessage(tab.id, {
+							action: 'performWidgetSearch',
+							query: message.query,
+							displayText: message.displayText
+						}, () => {
+							if (chrome.runtime.lastError) {
+								sendResponse({ success: false, error: chrome.runtime.lastError.message });
+							} else {
+								sendResponse({ success: true });
+							}
+						});
+					} else {
+						sendResponse({ success: false, error: "No active tab" });
+					}
+				} catch (error) {
+					sendResponse({ success: false, error: error.message });
+				}
+			})();
+			return true;
 		case "EXPLAIN_SELECTION": 
 			// Message shape: { type: 'EXPLAIN_SELECTION', text: 'selected text', options: { ... } }
             (async () => {
