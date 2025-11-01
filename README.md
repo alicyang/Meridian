@@ -27,18 +27,8 @@
 ## Usage
 
 1. Navigate to any website.
-2. Click the Meridian extension icon to activate guidance.
-3. Hover over elements to see highlights and explanations.
-4. Follow step-by-step instructions for multi-step tasks.
+2. Click the Meridian extension icon to interact with AI-powered chat and make queries about the page content. Follow step-by-step instructions for multi-step tasks.
+3. Use the hovering search widget to search for anything on the page semantically. 
+4. Highlight text and right-click to select trigger Meridian's in-line explain in context tooltip.
+5. Open any pdf to view in Meridian's PDF viewer. The explain in context tooltip should also be available here. 
 
----
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request with your improvements.
-
----
-
-## License
-
-This project is licensed under the MIT License.
