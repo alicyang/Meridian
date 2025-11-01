@@ -53,6 +53,11 @@
     font-family: inherit;
     border: none;
     resize: none;
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 #user-input::placeholder {
@@ -96,6 +101,8 @@
     font-size: 14px;
     line-height: 1.4;
     word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .message.user {

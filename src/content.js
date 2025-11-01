@@ -1,4 +1,3 @@
-console.log("Content script starting...");
 
 // Utility functions (copied from utils.js to avoid module issues)
 function cosineSimilarity(a, b) {
@@ -262,7 +261,7 @@ async function performSearch(query) {
         showSearchResults(`Showing ${searchMatches.length} matches`);
         
     } catch (error) {
-        console.error("Search error:", error);
+        // Search error
         showSearchResults("Search failed");
     } finally {
         // Reset button state
@@ -278,9 +277,10 @@ function showSearchResults(message) {
 }
 
 function navigateToMatch(direction) {
-    if (searchMatches.length === 0) return;
+    if (searchMatches.length === 0) {
+        return;
+    }
     
-    // Clear previous highlights
     clearHighlights();
     
     currentMatchIndex += direction;
@@ -289,24 +289,93 @@ function navigateToMatch(direction) {
     
     const match = searchMatches[currentMatchIndex];
     const content = JSON.parse(match.content);
-    console.log(match);
+    
     const element = findElementByText(content.text, match.type, content.href);
-    if (element) {
-        // Add highlighting class
-        element.classList.add('search-match');
-        
-        // Scroll to element with some padding
-        element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center',
-            inline: 'nearest'
-        });
-        
-        // Auto-remove highlight after 5 seconds
-        setTimeout(() => {
-            element.classList.remove('search-match');
-        }, 5000);
+    
+    if (!element) {
+        showSearchResults(`Match ${currentMatchIndex + 1}/${searchMatches.length}: Element not found`);
+        return;
     }
+    
+    // Highlight the element itself
+    element.classList.add('search-match');
+    
+    // Find the most visible parent container to highlight
+    let parent = element.parentElement;
+    let mostVisibleParent = null;
+    
+    while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent);
+        const rect = parent.getBoundingClientRect();
+        
+        // Check if parent is visible (has dimensions and is displayed)
+        const isVisible = style.display !== 'none' && 
+                         style.visibility !== 'hidden' &&
+                         rect.width > 0 && 
+                         rect.height > 0 &&
+                         !parent.hasAttribute('hidden');
+        
+        // Prefer containers that are actually visible and have meaningful size
+        if (isVisible && (rect.width > 50 || rect.height > 50)) {
+            // Check if it's a container type worth highlighting
+            if (parent.tagName === 'LI' || 
+                parent.tagName === 'UL' || 
+                parent.tagName === 'OL' ||
+                parent.tagName === 'DIV' ||
+                parent.classList.contains('menu') ||
+                parent.classList.contains('submenu') ||
+                parent.classList.contains('dropdown') ||
+                parent.classList.contains('accordion') ||
+                (parent.hasAttribute('role') && parent.getAttribute('role') === 'menu')) {
+                mostVisibleParent = parent;
+                break; // Found visible container, stop here
+            }
+        }
+        
+        parent = parent.parentElement;
+    }
+    
+    // Highlight the most visible parent if found (in addition to the element)
+    if (mostVisibleParent) {
+        mostVisibleParent.classList.add('search-match', 'search-match-parent');
+    }
+    
+    // Scroll to element
+    try {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    } catch (e) {
+        // Fallback: manual scroll
+        const rect = element.getBoundingClientRect();
+        const scrollY = window.scrollY || window.pageYOffset;
+        const centerY = rect.top + scrollY - (window.innerHeight / 2) + (rect.height / 2);
+        window.scrollTo({ top: Math.max(0, centerY), behavior: 'smooth' });
+    }
+    
+    // Also scroll scrollable parent containers
+    let scrollableParent = element.parentElement;
+    while (scrollableParent && scrollableParent !== document.body) {
+        const style = window.getComputedStyle(scrollableParent);
+        if (style.overflow === 'auto' || style.overflow === 'scroll' || 
+            style.overflowY === 'auto' || style.overflowY === 'scroll') {
+            const parentRect = scrollableParent.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            const scrollTop = scrollableParent.scrollTop + 
+                             (elementRect.top - parentRect.top) - 
+                             (parentRect.height / 2) + 
+                             (elementRect.height / 2);
+            scrollableParent.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' });
+        }
+        scrollableParent = scrollableParent.parentElement;
+    }
+    
+    // Remove highlights after 5 seconds
+    setTimeout(() => {
+        element.classList.remove('search-match');
+        if (mostVisibleParent && mostVisibleParent.isConnected) {
+            mostVisibleParent.classList.remove('search-match', 'search-match-parent');
+        }
+        document.querySelectorAll('.search-match').forEach(el => el.classList.remove('search-match'));
+    }, 5000);
     
     showSearchResults(`Match ${currentMatchIndex + 1}/${searchMatches.length}: ${content.text}`);
 }
@@ -317,31 +386,63 @@ function clearHighlights() {
 }
 
 function findElementByText(text, type, href) {
+    const normalize = (s) => s.trim().replace(/\s+/g, ' ').toLowerCase();
+    const normalizedText = normalize(text);
+    
     if (type === 'link') {
-        const byHref = href ? document.querySelector(`a[href='${CSS.escape(href)}']`) : null;
-        if (byHref) return byHref;
-        return Array.from(document.querySelectorAll('a')).find(a => a.innerText.trim() === text);
-    } else if (type === 'header') {
-        return Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).find(h => h.innerText.trim() === text);
+        const links = Array.from(document.querySelectorAll('a[href]'));
+        
+        // Try href match first
+        if (href) {
+            try {
+                const targetPath = new URL(href, window.location.origin).pathname.replace(/\/+$/, '');
+                
+                const byHref = links.find(a => {
+                    const aHref = a.getAttribute('href');
+                    if (!aHref) return false;
+                    try {
+                        const aPath = new URL(a.href).pathname.replace(/\/+$/, '');
+                        return aPath === targetPath;
+                    } catch {
+                        return aHref.replace(/\/+$/, '') === href.replace(/\/+$/, '');
+                    }
+                });
+                
+                if (byHref) {
+                    return byHref;
+                }
+            } catch (e) {
+                // Href matching failed, fall through to text match
+            }
+        }
+        
+        // Fallback to text match (handles nested structures like <a><h3>Text</h3></a>)
+        const byText = links.find(a => {
+            const aText = normalize(a.innerText);
+            return aText === normalizedText;
+        });
+        
+        return byText;
     }
+    
+    if (type === 'header') {
+        const headers = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+        const found = headers.find(h => normalize(h.innerText) === normalizedText);
+        return found;
+    }
+    
     return null;
 }
 
-console.log("Document ready state:", document.readyState);
-
 if (document.readyState === 'loading') {
-    console.log("Document still loading, waiting for DOMContentLoaded");
     document.addEventListener('DOMContentLoaded', () => {
-        console.log("DOMContentLoaded fired");
         injectWidget();
     });
 } else {
-    console.log("Document already loaded, injecting immediately");
     injectWidget();
 }
 
 setTimeout(() => {
-    console.log("Timeout injection attempt");
     injectWidget();
 }, 1000);
 
@@ -350,50 +451,41 @@ let lastUrl = location.href;
 new MutationObserver(() => {
     const url = location.href;
     if (url !== lastUrl) {
-        console.log("URL changed, re-injecting widget");
         lastUrl = url;
         setTimeout(injectWidget, 500);
     }
 }).observe(document, { subtree: true, childList: true });
 
-console.log("Content script setup complete");
 
 /* ***explain_in_context*** */
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('Content script received message:', request);
-    console.log('Sender:', sender);
     
     switch (request.action) {
       case 'showInlineExplanation':
-        console.log('Showing inline explanation for:', request.text);
         if (window.showInlineLoadingTooltip) {
           window.showInlineLoadingTooltip(request.text);
         }
         handleInlineExplanation(request.text);
         break;
         case 'showInlineLoadingTooltip':
-          console.log('Showing inline loading tooltip for:', request.text);
           if (window.showInlineLoadingTooltip) {
             window.showInlineLoadingTooltip(request.text);
           }
           break;
     
         case 'showInlineExplanationTooltip':
-          console.log('Showing inline explanation tooltip for:', request.text);
           if (window.showInlineExplanationTooltip) {
             window.showInlineExplanationTooltip(request.text, request.explanation);
           }
           break;
         
         case 'getStoredSelection':
-          console.log('Sending text to popup file:', selectedText);
           sendResponse({text: selectedText});
           break;
     
       case 'showInlineErrorTooltip':
-          console.log('Showing inline error tooltip for:', request.text);
           if (window.showInlineErrorTooltip) {
             window.showInlineErrorTooltip(request.text, request.error);
           }
@@ -414,7 +506,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           })();
           break;
       default:
-          console.log('Unknown action:', request.action);
         
     }
 });
@@ -424,7 +515,7 @@ function openPDFInViewer(pdfUrl) {
     chrome.runtime.sendMessage({
         action: "openPdfViewer",
         pdfUrl
-    }).catch(err => console.error('Error opening PDF viewer:', err));
+    }).catch(() => {});
 }
 
 // Check if URL is a PDF
@@ -452,7 +543,7 @@ document.addEventListener('click', async (event) => {
                 openPDFInViewer(link.href);
             }
         } catch (error) {
-            console.error('Error checking PDF setting:', error);
+            // Error checking PDF setting
         }
     }
 }, true); // Use capture phase to intercept early
@@ -464,7 +555,7 @@ async function handleInlineExplanation(text) {
         text: text
       });
     } catch (error) {
-      console.error('Error sending message:', error);
+      // Error sending message
     }
 }
 

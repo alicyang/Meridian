@@ -32,7 +32,8 @@
     top: 60px;
     right: 0;
     width: 300px;
-    background: #ffffff;
+    background: #ffffff !important;
+    color: #0D1821 !important;
     border: 1px solid rgba(0,0,0,0.08);
     box-shadow: 0 1px 2px rgba(0,0,0,0.06);
     padding: 12px;
@@ -67,17 +68,21 @@
     min-height: 40px;
     border: none;
     font-size: 14px;
-    color: #0D1821;
-    background: transparent;
+    color: #0D1821 !important;
+    background: transparent !important;
     outline: none;
+}
+
+#widget-input::placeholder {
+    color: rgba(0, 0, 0, 0.45) !important;
 }
 
 .search-btn {
     padding: 8px 16px;
     border: none;
     border-radius: 20px;
-    background: #2596BE;
-    color: #f8f5ee;
+    background: #2596BE !important;
+    color: #f8f5ee !important;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
@@ -104,7 +109,8 @@
     padding: 6px 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    background: #f8f9fa;
+    background: #f8f9fa !important;
+    color: #0D1821 !important;
     cursor: pointer;
     font-size: 12px;
     flex: 1;
@@ -120,6 +126,7 @@
     margin-top: 10px;
     max-height: 200px;
     overflow-y: auto;
+    color: #0D1821 !important;
 }
 
 /* Match highlighting styles */
@@ -130,11 +137,28 @@
     border-radius: 4px !important;
     transition: all 0.3s ease !important;
     position: relative !important;
+    z-index: 2147483646 !important;
     box-shadow: 
         0 0 0 1px rgba(0, 123, 255, 0.3),
         0 0 10px rgba(0, 123, 255, 0.4),
         0 0 20px rgba(0, 123, 255, 0.3),
         0 0 30px rgba(0, 123, 255, 0.2) !important;
+}
+
+/* Parent container highlight - more subtle */
+.search-match.search-match-parent {
+    outline: 2px solid rgba(0, 123, 255, 0.6) !important;
+    outline-offset: 1px !important;
+    background-color: rgba(0, 123, 255, 0.05) !important;
+    z-index: 2147483645 !important;
+    box-shadow: 
+        0 0 0 1px rgba(0, 123, 255, 0.2),
+        0 0 5px rgba(0, 123, 255, 0.3) !important;
+}
+
+.search-match.search-match-parent::before,
+.search-match.search-match-parent::after {
+    display: none !important;
 }
 
 .search-match::before {
